@@ -18,6 +18,7 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

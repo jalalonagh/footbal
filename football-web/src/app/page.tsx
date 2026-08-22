@@ -7,7 +7,7 @@ export default function Home() {
   const [scenarios, setScenarios] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5144/api"}/scenarios?page=1&pageSize=6`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://localhost:7223/api"}/scenarios?page=1&pageSize=6`)
       .then((r) => r.json())
       .then(setScenarios)
       .catch(() => {});
