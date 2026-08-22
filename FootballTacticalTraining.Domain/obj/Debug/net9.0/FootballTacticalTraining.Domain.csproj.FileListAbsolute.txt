@@ -1,0 +1,12 @@
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\FootballTacticalTraining.Domain.csproj.AssemblyReference.cache
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\FootballTacticalTraining.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\FootballTacticalTraining.Domain.AssemblyInfoInputs.cache
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\FootballTacticalTraining.Domain.AssemblyInfo.cs
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\FootballTacticalTraining.Domain.csproj.CoreCompileInputs.cache
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\bin\Debug\net9.0\FootballTacticalTraining.Domain.deps.json
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\bin\Debug\net9.0\FootballTacticalTraining.Domain.dll
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\bin\Debug\net9.0\FootballTacticalTraining.Domain.pdb
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\FootballTacticalTraining.Domain.dll
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\refint\FootballTacticalTraining.Domain.dll
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\FootballTacticalTraining.Domain.pdb
+C:\Users\j-onagh\Desktop\footbal\FootballTacticalTraining.Domain\obj\Debug\net9.0\ref\FootballTacticalTraining.Domain.dll

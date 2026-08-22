@@ -1,0 +1,6 @@
+@FootballTacticalTraining.API_HostAddress = http://localhost:5039
+
+GET {{FootballTacticalTraining.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
