@@ -152,6 +152,17 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(c => c.Code).IsUnique();
         });
+
+        modelBuilder.Entity<TrainingResult>(e =>
+        {
+            e.HasOne(t => t.TrainingSession).WithMany(s => s.Results).HasForeignKey(t => t.TrainingSessionId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(t => t.PlayerProfile).WithMany().HasForeignKey(t => t.PlayerProfileId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Decision>(e =>
+        {
+            e.HasOne(d => d.TrainingSession).WithMany(s => s.Decisions).HasForeignKey(d => d.TrainingSessionId).OnDelete(DeleteBehavior.NoAction);
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

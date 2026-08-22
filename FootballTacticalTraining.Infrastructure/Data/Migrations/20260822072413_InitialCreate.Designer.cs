@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballTacticalTraining.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260822070954_InitialCreate")]
+    [Migration("20260822072413_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -2203,6 +2203,9 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
                     b.Property<Guid>("PlayerProfileId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("PlayerProfileId1")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("PositioningScore")
                         .HasColumnType("decimal(18,2)");
 
@@ -2224,6 +2227,8 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PlayerProfileId");
+
+                    b.HasIndex("PlayerProfileId1");
 
                     b.HasIndex("TrainingSessionId");
 
@@ -2466,7 +2471,7 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
                     b.HasOne("FootballTacticalTraining.Domain.Entities.TrainingSession", "TrainingSession")
                         .WithMany("Decisions")
                         .HasForeignKey("TrainingSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("TrainingSession");
@@ -2717,15 +2722,19 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.TrainingResult", b =>
                 {
                     b.HasOne("FootballTacticalTraining.Domain.Entities.Auth.PlayerProfile", "PlayerProfile")
-                        .WithMany("TrainingResults")
+                        .WithMany()
                         .HasForeignKey("PlayerProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("FootballTacticalTraining.Domain.Entities.Auth.PlayerProfile", null)
+                        .WithMany("TrainingResults")
+                        .HasForeignKey("PlayerProfileId1");
 
                     b.HasOne("FootballTacticalTraining.Domain.Entities.TrainingSession", "TrainingSession")
                         .WithMany("Results")
                         .HasForeignKey("TrainingSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("PlayerProfile");

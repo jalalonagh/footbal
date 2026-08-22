@@ -1037,8 +1037,7 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
                         name: "FK_Decisions_TrainingSessions_TrainingSessionId",
                         column: x => x.TrainingSessionId,
                         principalTable: "TrainingSessions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1060,6 +1059,7 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
                     OptimalPathJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UserPathJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PlayerProfileId1 = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -1073,14 +1073,17 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
                         name: "FK_TrainingResults_PlayerProfiles_PlayerProfileId",
                         column: x => x.PlayerProfileId,
                         principalTable: "PlayerProfiles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_TrainingResults_PlayerProfiles_PlayerProfileId1",
+                        column: x => x.PlayerProfileId1,
+                        principalTable: "PlayerProfiles",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_TrainingResults_TrainingSessions_TrainingSessionId",
                         column: x => x.TrainingSessionId,
                         principalTable: "TrainingSessions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1457,6 +1460,11 @@ namespace FootballTacticalTraining.Infrastructure.Data.Migrations
                 name: "IX_TrainingResults_PlayerProfileId",
                 table: "TrainingResults",
                 column: "PlayerProfileId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrainingResults_PlayerProfileId1",
+                table: "TrainingResults",
+                column: "PlayerProfileId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TrainingResults_TrainingSessionId",

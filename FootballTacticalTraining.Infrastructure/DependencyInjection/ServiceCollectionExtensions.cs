@@ -24,7 +24,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITacticalEngine, TacticalEngine>();
         services.AddScoped<IEvaluationEngine, EvaluationEngine>();
 
-        services.AddScoped<IPaymentGateway, ZarinPalPaymentGateway>();
+        services.AddHttpClient<IPaymentGateway, ZarinPalPaymentGateway>();
         services.Configure<ZarinPalSettings>(configuration.GetSection("ZarinPal"));
 
         services.AddStackExchangeRedisCache(options =>
