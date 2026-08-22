@@ -5,5 +5,7 @@ public enum EntitlementType
     FeatureAccess,
     UsageLimit,
     DurationLimit,
-    CountLimit
+    CountLimit,
+    Usage,
+    Unlimited
 }

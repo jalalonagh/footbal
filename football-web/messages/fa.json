@@ -1,0 +1,111 @@
+{
+  "nav": {
+    "home": "خانه",
+    "scenarios": "سناریوها",
+    "pricing": "قیمت‌ها",
+    "dashboard": "داشبورد",
+    "profile": "پروفایل",
+    "login": "ورود",
+    "register": "ثبت‌نام",
+    "logout": "خروج"
+  },
+  "home": {
+    "title": "تاکتیک فوتبال را بیاموزید",
+    "subtitle": "پلتفرم آموزش تاکتیک تعاملی 2بعدی برای بازیکنان، مربیان و آکادمی‌ها. جایگاه‌گیری، حرکت و تصمیم‌گیری را در سناریوهای واقعی تمرین کنید.",
+    "startTraining": "شروع تمرین",
+    "signUpFree": "ثبت‌نام رایگان",
+    "features": "امکانات",
+    "feature1Title": "شبیه‌سازی تاکتیک 2بعدی",
+    "feature1Desc": "زمین تعاملی با حرکت لحظه‌ای بازیکنان و تحلیل تاکتیکی",
+    "feature2Title": "تمرین تصمیم‌گیری",
+    "feature2Desc": "تصمیمات تاکتیکی بگیرید و بازخورد فوری با مربیگری هوش مصنوعی دریافت کنید",
+    "feature3Title": "ردیابی پیشرفت",
+    "feature3Desc": "هوش تاکتیکی، جایگاه‌گیری و نمرات حرکت خود را پیگیری کنید",
+    "popularScenarios": "سناریوهای محبوب",
+    "footer": "پلتفرم آموزش تاکتیک فوتبال. تمامی حقوق محفوظ است."
+  },
+  "auth": {
+    "loginTitle": "خوش آمدید",
+    "loginSubtitle": "برای ادامه تمرین وارد شوید",
+    "registerTitle": "ایجاد حساب کاربری",
+    "registerSubtitle": "سفر آموزش تاکتیک خود را شروع کنید",
+    "email": "ایمیل",
+    "password": "رمز عبور",
+    "firstName": "نام",
+    "lastName": "نام خانوادگی",
+    "signIn": "ورود",
+    "createAccount": "ایجاد حساب",
+    "noAccount": "حساب کاربری ندارید؟",
+    "hasAccount": "قبلاً حساب دارید؟",
+    "signUp": "ثبت‌نام",
+    "signHere": "اینجا وارد شوید",
+    "playerRole": "بازیکن",
+    "coachRole": "مربی"
+  },
+  "scenarios": {
+    "title": "سناریوهای تاکتیکی",
+    "allCategories": "همه دسته‌ها",
+    "allLevels": "همه سطوح",
+    "loading": "در حال بارگذاری...",
+    "empty": "سناریویی یافت نشد."
+  },
+  "pricing": {
+    "title": "پلن خود را انتخاب کنید",
+    "subtitle": "امکانات کامل آموزش تاکتیک را باز کنید",
+    "playerPlans": "پلن‌های بازیکن",
+    "coachPlans": "پلن‌های مربی",
+    "freePlan": "پلن رایگان",
+    "freeDesc": "با دسترسی محدود به سناریوهای پایه شروع کنید",
+    "getStarted": "رایگان شروع کنید",
+    "selectPlan": "انتخاب پلن",
+    "bestValue": "بهترین ارزش",
+    "monthly": "ماهانه",
+    "quarterly": "سه‌ماهه",
+    "semiAnnual": "۶ ماهه",
+    "annual": "سالانه"
+  },
+  "dashboard": {
+    "welcome": "خوش آمدید",
+    "subscription": "اشتراک",
+    "free": "رایگان",
+    "scenarios": "سناریوهای موجود",
+    "tacticalIQ": "هوش تاکتیکی",
+    "tacticalIQDesc": "تمرین کنید تا نمره خود را ببینید",
+    "quickStart": "شروع سریع",
+    "browseScenarios": "مشاهده سناریوها",
+    "browseDesc": "۵۰ سناریوی تاکتیکی در ۵ دسته را کاوش کنید",
+    "tryDemo": "تمرین نمونه",
+    "tryDemoDesc": "آموزش تعاملی تاکتیک را تجربه کنید",
+    "recentActivity": "فعالیت اخیر",
+    "noActivity": "هنوز فعالیتی نیست. تمرین کنید تا پیشرفت خود را ببینید."
+  },
+  "profile": {
+    "title": "پروفایل",
+    "accountInfo": "اطلاعات حساب",
+    "name": "نام",
+    "role": "نقش",
+    "subscription": "اشتراک",
+    "expires": "انقضا",
+    "freePlan": "شما در پلن رایگان هستید",
+    "upgrade": "ارتقای پلن",
+    "settings": "تنظیمات",
+    "signOut": "خروج"
+  },
+  "training": {
+    "tacticalAnalysis": "تحلیل تاکتیکی",
+    "evaluateDecision": "ارزیابی تصمیم",
+    "tacticalOptions": "گزینه‌های تاکتیکی",
+    "coachingFeedback": "بازخورد مربیگری",
+    "overall": "کلی",
+    "position": "جایگاه",
+    "timing": "زمان‌بندی",
+    "movement": "حرکت"
+  },
+  "cms": {
+    "articlesTitle": "مقالات و راهنماها",
+    "faqTitle": "سوالات متداول",
+    "noArticles": "هنوز مقاله‌ای نیست.",
+    "readMore": "ادامه مطلب",
+    "backToArticles": "بازگشت به مقالات"
+  }
+}

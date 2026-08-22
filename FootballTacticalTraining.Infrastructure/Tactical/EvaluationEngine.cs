@@ -9,10 +9,10 @@ public class EvaluationEngine : IEvaluationEngine
 
     public EvaluationEngine(ILogger<EvaluationEngine> logger) { _logger = logger; }
 
-    public Task<EvaluationResult> EvaluateDecisionAsync(DecisionInput input)
+    public async Task<EvaluationResult> EvaluateDecisionAsync(DecisionInput input)
     {
-        var posEval = EvaluatePositionAsync(input.UserX, input.UserY, input.OptimalX, input.OptimalY).Result;
-        var timingEval = EvaluateTimingAsync(input.UserTiming, input.OptimalTiming).Result;
+        var posEval = await EvaluatePositionAsync(input.UserX, input.UserY, input.OptimalX, input.OptimalY);
+        var timingEval = await EvaluateTimingAsync(input.UserTiming, input.OptimalTiming);
 
         var overallScore = (posEval.Score * 0.5m) + (timingEval.Score * 0.3m) + CalculateActionScore(input) * 0.2m;
 
@@ -21,7 +21,7 @@ public class EvaluationEngine : IEvaluationEngine
         else if (timingEval.Score < 50) mistakeType = "TIMING_ERROR";
         else if (overallScore < 40) mistakeType = "DECISION_ERROR";
 
-        return Task.FromResult(new EvaluationResult
+        return new EvaluationResult
         {
             OverallScore = Math.Round(overallScore, 1),
             PositionScore = posEval.Score,
@@ -30,7 +30,7 @@ public class EvaluationEngine : IEvaluationEngine
             MistakeType = mistakeType,
             Explanation = GenerateExplanation(posEval, timingEval, overallScore, input),
             BestAlternative = overallScore < 60 ? "Try a different approach" : null
-        });
+        };
     }
 
     public Task<PositionEvaluation> EvaluatePositionAsync(decimal userX, decimal userY, decimal optimalX, decimal optimalY)
@@ -38,7 +38,6 @@ public class EvaluationEngine : IEvaluationEngine
         var distance = (decimal)Math.Sqrt((double)((optimalX - userX) * (optimalX - userX) + (optimalY - userY) * (optimalY - userY)));
         var score = Math.Max(0, 100 - distance * 3);
         string quality = score >= 80 ? "Excellent" : score >= 60 ? "Good" : score >= 40 ? "Average" : "Poor";
-
         return Task.FromResult(new PositionEvaluation { Score = Math.Round(score, 1), Distance = Math.Round(distance, 2), Quality = quality });
     }
 
@@ -48,7 +47,6 @@ public class EvaluationEngine : IEvaluationEngine
         var absDelay = Math.Abs(delay);
         var score = Math.Max(0, 100 - absDelay * 30);
         string quality = score >= 80 ? "Perfect Timing" : score >= 60 ? "Good Timing" : delay > 0 ? "Late Movement" : "Early Movement";
-
         return Task.FromResult(new TimingEvaluation { Score = Math.Round(score, 1), Delay = Math.Round(delay, 2), Quality = quality });
     }
 
@@ -86,8 +84,8 @@ public class EvaluationEngine : IEvaluationEngine
     {
         if (overall >= 80) return "Excellent decision! Great positioning and timing.";
         if (overall >= 60) return "Good decision. Minor improvements possible in positioning.";
-        if (pos.Score < 50) return $"Your position was off by {pos.Distance} units. Try to be closer to the optimal zone.";
-        if (timing.Score < 50) return $"Movement was {timing.Quality.ToLower()}. Optimal timing is {Math.Abs(timing.Delay):F1}s.";
+        if (pos.Score < 50) return "Your position was off by " + pos.Distance + " units. Try to be closer to the optimal zone.";
+        if (timing.Score < 50) return "Movement was " + timing.Quality.ToLower() + ". Optimal timing is " + Math.Abs(timing.Delay).ToString("F1") + "s.";
         return "Review the tactical situation and consider alternatives.";
     }
 }

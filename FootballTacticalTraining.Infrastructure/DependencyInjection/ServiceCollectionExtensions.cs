@@ -1,5 +1,6 @@
 using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Application.Services;
+using FootballTacticalTraining.Infrastructure.Audit;
 using FootballTacticalTraining.Infrastructure.Data;
 using FootballTacticalTraining.Infrastructure.Payment;
 using FootballTacticalTraining.Infrastructure.Tactical;
@@ -21,11 +22,15 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<IScenarioService, ScenarioService>();
         services.AddScoped<ITacticalEngine, TacticalEngine>();
         services.AddScoped<IEvaluationEngine, EvaluationEngine>();
+        services.AddScoped<ISimulationEngine, SimulationEngine>();
 
         services.AddHttpClient<IPaymentGateway, ZarinPalPaymentGateway>();
         services.Configure<ZarinPalSettings>(configuration.GetSection("ZarinPal"));
+
+        services.AddScoped<IAuditService, AuditService>();
 
         services.AddStackExchangeRedisCache(options =>
         {

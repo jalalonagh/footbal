@@ -15,6 +15,7 @@ public class ScenariosController : ControllerBase
     public ScenariosController(IScenarioService scenarioService) { _scenarioService = scenarioService; }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<List<ScenarioDto>>> GetScenarios(
         [FromQuery] ScenarioCategory? category,
         [FromQuery] DifficultyLevel? difficulty,
@@ -43,10 +44,11 @@ public class ScenariosController : ControllerBase
             IsPublic = s.IsPublic
         }).ToList();
 
-        return Ok(dtos);
+        return Ok(new { items = dtos, total = dtos.Count, page, pageSize });
     }
 
     [HttpGet("{id}")]
+    [AllowAnonymous]
     public async Task<ActionResult<ScenarioDto>> GetById(Guid id)
     {
         var scenario = await _scenarioService.GetByIdAsync(id);
@@ -71,7 +73,7 @@ public class ScenariosController : ControllerBase
         });
     }
 
-    [Authorize]
+    [Authorize(Roles = "Coach,Admin,SuperAdmin")]
     [HttpPost]
     public async Task<ActionResult<ScenarioDto>> Create([FromBody] ScenarioDto dto)
     {
@@ -94,5 +96,31 @@ public class ScenariosController : ControllerBase
         await _scenarioService.CreateAsync(scenario);
         dto.Id = scenario.Id;
         return CreatedAtAction(nameof(GetById), new { id = scenario.Id }, dto);
+    }
+
+    [Authorize(Roles = "Coach,Admin,SuperAdmin")]
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] ScenarioDto dto)
+    {
+        var scenario = await _scenarioService.GetByIdAsync(id);
+        if (scenario == null) return NotFound();
+
+        scenario.Name = dto.Name;
+        scenario.Description = dto.Description;
+        scenario.Category = dto.Category;
+        scenario.Difficulty = dto.Difficulty;
+        scenario.Formation = dto.Formation;
+        scenario.GamePhase = dto.GamePhase;
+        scenario.GameMinute = dto.GameMinute;
+        await _scenarioService.UpdateAsync(scenario);
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _scenarioService.DeleteAsync(id);
+        return NoContent();
     }
 }

@@ -34,30 +34,28 @@ public class TacticalEngine : ITacticalEngine
         return Task.FromResult(analysis);
     }
 
-    public Task<TacticalRecommendation> GetRecommendedActionAsync(GameState gameState, Guid playerId)
+    public async Task<TacticalRecommendation> GetRecommendedActionAsync(GameState gameState, Guid playerId)
     {
         var player = gameState.Players.FirstOrDefault(p => p.Id == playerId);
-        if (player == null) return Task.FromResult(new TacticalRecommendation { ActionType = "HOLD_POSITION", Score = 0 });
+        if (player == null) return new TacticalRecommendation { ActionType = "HOLD_POSITION", Score = 0 };
 
         var defenders = gameState.Players.Where(p => p.TeamId != player.TeamId).ToList();
-        var analysis = AnalyzeSituationAsync(gameState).Result;
+        var analysis = await AnalyzeSituationAsync(gameState);
 
         var recommendations = GenerateRecommendations(player, defenders, analysis, gameState);
-        var best = recommendations.OrderByDescending(r => r.Score).FirstOrDefault() ?? new TacticalRecommendation { ActionType = "HOLD_POSITION", Score = 50 };
-
-        return Task.FromResult(best);
+        return recommendations.OrderByDescending(r => r.Score).FirstOrDefault() ?? new TacticalRecommendation { ActionType = "HOLD_POSITION", Score = 50 };
     }
 
-    public Task<List<TacticalRecommendation>> GetAllPossibleActionsAsync(GameState gameState, Guid playerId)
+    public async Task<List<TacticalRecommendation>> GetAllPossibleActionsAsync(GameState gameState, Guid playerId)
     {
         var player = gameState.Players.FirstOrDefault(p => p.Id == playerId);
-        if (player == null) return Task.FromResult(new List<TacticalRecommendation>());
+        if (player == null) return new List<TacticalRecommendation>();
 
         var defenders = gameState.Players.Where(p => p.TeamId != player.TeamId).ToList();
-        var analysis = AnalyzeSituationAsync(gameState).Result;
+        var analysis = await AnalyzeSituationAsync(gameState);
         var recommendations = GenerateRecommendations(player, defenders, analysis, gameState);
 
-        return Task.FromResult(recommendations.OrderByDescending(r => r.Score).ToList());
+        return recommendations.OrderByDescending(r => r.Score).ToList();
     }
 
     private List<TacticalRecommendation> GenerateRecommendations(Application.Interfaces.PlayerState player, List<Application.Interfaces.PlayerState> defenders, TacticalAnalysis analysis, GameState state)

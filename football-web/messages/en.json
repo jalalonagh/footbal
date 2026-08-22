@@ -1,0 +1,111 @@
+{
+  "nav": {
+    "home": "Home",
+    "scenarios": "Scenarios",
+    "pricing": "Pricing",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout"
+  },
+  "home": {
+    "title": "Master Football Tactics",
+    "subtitle": "Interactive 2D tactical training platform for players, coaches, and academies. Practice positioning, movement, and decision-making in real game scenarios.",
+    "startTraining": "Start Training",
+    "signUpFree": "Sign Up Free",
+    "features": "Features",
+    "feature1Title": "2D Tactical Simulation",
+    "feature1Desc": "Interactive pitch with real-time player movement and tactical analysis",
+    "feature2Title": "Decision Training",
+    "feature2Desc": "Make tactical decisions and get instant feedback with AI coaching",
+    "feature3Title": "Progress Tracking",
+    "feature3Desc": "Track your Tactical IQ, positioning, and movement scores over time",
+    "popularScenarios": "Popular Scenarios",
+    "footer": "Football Tactical Training Platform. All rights reserved."
+  },
+  "auth": {
+    "loginTitle": "Welcome Back",
+    "loginSubtitle": "Sign in to continue your training",
+    "registerTitle": "Create Account",
+    "registerSubtitle": "Start your tactical training journey",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "signUp": "Sign Up",
+    "signHere": "Sign In",
+    "playerRole": "Player",
+    "coachRole": "Coach"
+  },
+  "scenarios": {
+    "title": "Tactical Scenarios",
+    "allCategories": "All Categories",
+    "allLevels": "All Levels",
+    "loading": "Loading scenarios...",
+    "empty": "No scenarios found."
+  },
+  "pricing": {
+    "title": "Choose Your Plan",
+    "subtitle": "Unlock full tactical training features",
+    "playerPlans": "Player Plans",
+    "coachPlans": "Coach Plans",
+    "freePlan": "Free Plan",
+    "freeDesc": "Start with limited access to basic scenarios",
+    "getStarted": "Get Started Free",
+    "selectPlan": "Select Plan",
+    "bestValue": "BEST VALUE",
+    "monthly": "Monthly",
+    "quarterly": "Quarterly",
+    "semiAnnual": "6 Months",
+    "annual": "Annual"
+  },
+  "dashboard": {
+    "welcome": "Welcome back",
+    "subscription": "Subscription",
+    "free": "Free",
+    "scenarios": "Available Scenarios",
+    "tacticalIQ": "Tactical IQ",
+    "tacticalIQDesc": "Complete training to see your score",
+    "quickStart": "Quick Start",
+    "browseScenarios": "Browse Scenarios",
+    "browseDesc": "Explore 50 tactical scenarios across 5 categories",
+    "tryDemo": "Try Demo Training",
+    "tryDemoDesc": "Experience the interactive tactical training",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No recent activity yet. Start training to see your progress here."
+  },
+  "profile": {
+    "title": "Profile",
+    "accountInfo": "Account Information",
+    "name": "Name",
+    "role": "Role",
+    "subscription": "Subscription",
+    "expires": "Expires",
+    "freePlan": "You are on the Free plan",
+    "upgrade": "Upgrade Plan",
+    "settings": "Settings",
+    "signOut": "Sign Out"
+  },
+  "training": {
+    "tacticalAnalysis": "Get Tactical Analysis",
+    "evaluateDecision": "Evaluate My Decision",
+    "tacticalOptions": "Tactical Options",
+    "coachingFeedback": "Coaching Feedback",
+    "overall": "Overall",
+    "position": "Position",
+    "timing": "Timing",
+    "movement": "Movement"
+  },
+  "cms": {
+    "articlesTitle": "Articles & Guides",
+    "faqTitle": "Frequently Asked Questions",
+    "noArticles": "No articles yet.",
+    "readMore": "Read More",
+    "backToArticles": "Back to Articles"
+  }
+}

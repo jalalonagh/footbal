@@ -49,8 +49,24 @@ public class SubscriptionController : ControllerBase
         if (plan == null) return NotFound("Plan not found");
 
         var amount = plan.DiscountPrice ?? plan.Price;
-        var result = await _paymentGateway.RequestPaymentAsync(amount, $"Subscription: {plan.Name}", "", dto.CallbackUrl);
 
+        if (amount == 0)
+        {
+            var freeSubscription = new Subscription
+            {
+                UserId = userId,
+                PlanId = plan.Id,
+                Status = Domain.Enums.SubscriptionStatus.Active,
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow.AddDays(plan.DurationDays)
+            };
+            await _unitOfWork.Repository<Subscription>().AddAsync(freeSubscription);
+            await _unitOfWork.SaveChangesAsync();
+            await ProvisionEntitlementsAsync(userId, plan.Id, freeSubscription.Id);
+            return Ok(new { paymentId = (Guid?)null, redirectUrl = "/payment/success" });
+        }
+
+        var result = await _paymentGateway.RequestPaymentAsync(amount, $"Subscription: {plan.Name}", "", dto.CallbackUrl);
         if (!result.Success) return BadRequest(result.ErrorMessage);
 
         var payment = new PaymentEntity
@@ -82,6 +98,9 @@ public class SubscriptionController : ControllerBase
         var payment = payments.FirstOrDefault();
         if (payment == null) return NotFound("Payment not found");
 
+        if (payment.Status == Domain.Enums.PaymentStatus.Completed)
+            return Redirect("/payment/success");
+
         var verifyResult = await _paymentGateway.VerifyPaymentAsync(Authority, payment.Amount);
         if (!verifyResult.Success)
         {
@@ -110,6 +129,8 @@ public class SubscriptionController : ControllerBase
         await _unitOfWork.Repository<Subscription>().AddAsync(subscription);
         await _unitOfWork.SaveChangesAsync();
 
+        await ProvisionEntitlementsAsync(payment.UserId, payment.PlanId!.Value, subscription.Id);
+
         return Redirect("/payment/success");
     }
 
@@ -129,6 +150,29 @@ public class SubscriptionController : ControllerBase
     {
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var hasAccess = await _subscriptionService.HasFeatureAccessAsync(userId, featureKey);
-        return Ok(new { HasAccess = hasAccess });
+        var remaining = await _subscriptionService.GetRemainingUsageAsync(userId, featureKey);
+        return Ok(new { HasAccess = hasAccess, RemainingUsage = remaining });
+    }
+
+    private async Task ProvisionEntitlementsAsync(Guid userId, Guid planId, Guid subscriptionId)
+    {
+        var planFeatures = await _unitOfWork.Repository<PlanFeature>().FindAsync(pf => pf.PlanId == planId);
+        var subscription = await _unitOfWork.Repository<Subscription>().GetByIdAsync(subscriptionId);
+
+        foreach (var pf in planFeatures.Where(pf => pf.IsEnabled))
+        {
+            var entitlement = new UserEntitlement
+            {
+                UserId = userId,
+                FeatureId = pf.FeatureId,
+                SubscriptionId = subscriptionId,
+                Type = pf.Limit.HasValue ? Domain.Enums.EntitlementType.Usage : Domain.Enums.EntitlementType.Unlimited,
+                RemainingUsage = pf.Limit,
+                TotalUsage = pf.Limit,
+                ExpiresAt = subscription?.EndDate
+            };
+            await _unitOfWork.Repository<UserEntitlement>().AddAsync(entitlement);
+        }
+        await _unitOfWork.SaveChangesAsync();
     }
 }
