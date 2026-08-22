@@ -90,6 +90,14 @@ public class AppDbContext : DbContext
             e.Property(p => p.Amount).HasColumnType("decimal(18,2)");
             e.HasIndex(p => p.Authority);
             e.HasIndex(p => p.ReferenceId);
+            e.HasOne(p => p.Subscription).WithMany(s => s.Payments).HasForeignKey(p => p.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.Plan).WithMany().HasForeignKey(p => p.PlanId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Subscription>(e =>
+        {
+            e.HasOne(s => s.Payment).WithMany().HasForeignKey(s => s.PaymentId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ArticleTag>(e =>
