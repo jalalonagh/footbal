@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import LanguageSwitcher from "./language-switcher";
 
 export default function Navbar() {
   const { user, logout, isAuthenticated, isCoach, isAdmin } = useAuth();
@@ -47,16 +48,22 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-4">
+          <LanguageSwitcher />
           {isAuthenticated ? (
             <>
               <Link href={`/${locale}/profile`} className="text-gray-300 hover:text-white transition text-sm">
                 {user?.fullName || user?.email}
               </Link>
-              {isAdmin && (
-                <Link href={`/${locale}/admin`} className="text-yellow-400 hover:text-yellow-300 transition text-sm">
-                  Admin
-                </Link>
-              )}
+          {isAdmin && (
+            <Link href={`/${locale}/admin`} className="text-yellow-400 hover:text-yellow-300 transition text-sm font-semibold">
+              Admin Panel
+            </Link>
+          )}
+          {isAuthenticated && !isAdmin && (
+            <Link href={`/${locale}/setup-admin`} className="text-gray-500 hover:text-gray-300 transition text-xs">
+              Setup Admin
+            </Link>
+          )}
               <button onClick={logout} className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded text-sm hover:bg-gray-600 transition">
                 Logout
               </button>

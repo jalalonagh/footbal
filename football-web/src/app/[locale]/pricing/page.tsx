@@ -31,7 +31,13 @@ export default function PricingPage() {
     if (!isAuthenticated) { router.push("/login"); return; }
     try {
       const result = await api.subscription.createPayment(planId);
-      if (result.paymentUrl) window.location.href = result.paymentUrl;
+      const url = result.redirectUrl || (result as any).RedirectUrl;
+      if (url) {
+        window.location.href = url;
+      } else {
+        // Free plan or direct activation
+        router.push("/payment/success");
+      }
     } catch {
       alert("Failed to initiate payment. Please try again.");
     }

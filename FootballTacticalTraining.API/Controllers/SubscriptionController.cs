@@ -119,12 +119,18 @@ public class SubscriptionController : ControllerBase
     }
 
     [HttpGet("callback")]
+    [AllowAnonymous]
     public async Task<IActionResult> PaymentCallback(
         [FromQuery] string Authority,
-        [FromQuery] long Status,
-        [FromQuery] string id)
+        [FromQuery] string Status,
+        [FromQuery] string? id)
     {
-        if (Status != 100 && Status != 101) return BadRequest("Payment failed");
+        if (string.IsNullOrEmpty(Authority))
+            return BadRequest("Missing authority parameter");
+
+        // ZarinPal sends Status as "OK" for success, or numeric codes
+        bool isOk = Status?.ToUpper() == "OK" || Status == "100" || Status == "101";
+        if (!isOk) return Redirect("/payment/failure");
 
         var payments = await _unitOfWork.Repository<PaymentEntity>().FindAsync(p => p.Authority == Authority);
         var payment = payments.FirstOrDefault();
@@ -140,7 +146,7 @@ public class SubscriptionController : ControllerBase
             await _unitOfWork.Repository<PaymentEntity>().UpdateAsync(payment);
             await _unitOfWork.SaveChangesAsync();
             await _auditService.LogAsync("PaymentFailed", "Payment", payment.Id.ToString(), context: HttpContext);
-            return BadRequest("Verification failed");
+            return Redirect("/payment/failure");
         }
 
         payment.Status = Domain.Enums.PaymentStatus.Completed;

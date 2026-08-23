@@ -107,5 +107,15 @@
     "noArticles": "هنوز مقاله‌ای نیست.",
     "readMore": "ادامه مطلب",
     "backToArticles": "بازگشت به مقالات"
+  },
+  "payment": {
+    "successTitle": "پرداخت موفق!",
+    "successMessage": "اشتراک شما فعال شد. حالا می‌توانید از امکانات پلن خود استفاده کنید.",
+    "failureTitle": "پرداخت ناموفق",
+    "failureMessage": "پرداخت شما انجام نشد. لطفاً دوباره تلاش کنید.",
+    "tryAgain": "تلاش مجدد",
+    "goHome": "بازگشت به خانه",
+    "goToDashboard": "رفتن به داشبورد",
+    "startTraining": "شروع تمرین"
   }
 }

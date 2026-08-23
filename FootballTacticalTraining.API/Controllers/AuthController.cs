@@ -210,4 +210,28 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthResponseDto(newToken, newRefreshToken, user.Email, user.Role.ToString(), user.Id, $"{user.FirstName} {user.LastName}"));
     }
+
+    [HttpPost("setup-admin")]
+    public async Task<IActionResult> SetupAdmin([FromBody] SetupAdminDto dto)
+    {
+        var users = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == dto.Email);
+        var user = users.FirstOrDefault();
+        if (user == null) return NotFound("User not found");
+
+        if (!await _authService.VerifyPasswordAsync(dto.Password, user.PasswordHash))
+            return Unauthorized("Invalid password");
+
+        var hasAdmin = await _unitOfWork.Repository<User>().FindAsync(u => u.Role == UserRole.SuperAdmin || u.Role == UserRole.Admin);
+        if (hasAdmin.Any() && user.Role != UserRole.SuperAdmin)
+            return BadRequest("An admin already exists. Only SuperAdmin can promote users.");
+
+        user.Role = UserRole.SuperAdmin;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.Repository<User>().UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        var token = await _authService.GenerateJwtTokenAsync(user.Id, user.Email, user.Role.ToString());
+        var refreshToken = await _authService.GenerateRefreshTokenAsync(user.Id);
+        return Ok(new AuthResponseDto(token, refreshToken, user.Email, user.Role.ToString(), user.Id, $"{user.FirstName} {user.LastName}"));
+    }
 }

@@ -29,10 +29,13 @@ public class ZarinPalPaymentGateway : IPaymentGateway
     {
         try
         {
+            // ZarinPal expects amount in Rials (1 Toman = 10 Rials)
+            var amountInRials = (int)(amount * 10);
+
             var request = new
             {
                 merchant_id = _settings.MerchantId,
-                amount = (int)amount,
+                amount = amountInRials,
                 callback_url = callbackUrl,
                 description = description,
                 email = email
@@ -66,11 +69,14 @@ public class ZarinPalPaymentGateway : IPaymentGateway
     {
         try
         {
+            // ZarinPal expects amount in Rials (1 Toman = 10 Rials)
+            var amountInRials = (int)(amount * 10);
+
             var request = new
             {
                 merchant_id = _settings.MerchantId,
                 authority = authority,
-                amount = (int)amount
+                amount = amountInRials
             };
 
             var response = await _httpClient.PostAsJsonAsync(VerifyUrl, request);

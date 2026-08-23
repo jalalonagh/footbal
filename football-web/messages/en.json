@@ -107,5 +107,15 @@
     "noArticles": "No articles yet.",
     "readMore": "Read More",
     "backToArticles": "Back to Articles"
+  },
+  "payment": {
+    "successTitle": "Payment Successful!",
+    "successMessage": "Your subscription has been activated. You can now access all features of your plan.",
+    "failureTitle": "Payment Failed",
+    "failureMessage": "Your payment could not be processed. Please try again.",
+    "tryAgain": "Try Again",
+    "goHome": "Go Home",
+    "goToDashboard": "Go to Dashboard",
+    "startTraining": "Start Training"
   }
 }

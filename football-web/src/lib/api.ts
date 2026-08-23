@@ -37,6 +37,8 @@ export const api = {
       request<User>("/auth/me", { method: "PUT", body: JSON.stringify(data) }),
     changePassword: (data: { currentPassword: string; newPassword: string }) =>
       request<{ message: string }>("/auth/change-password", { method: "POST", body: JSON.stringify(data) }),
+    setupAdmin: (email: string, password: string) =>
+      request<AuthResponse>("/auth/setup-admin", { method: "POST", body: JSON.stringify({ email, password }) }),
     getUsers: (page = 1, pageSize = 20) =>
       request<{ items: User[]; total: number }>(`/auth/users?page=${page}&pageSize=${pageSize}`),
     updateRole: (userId: string, role: string) =>
@@ -155,38 +157,37 @@ export const api = {
   // ─── Articles ────────────────────────────────────────
   articles: {
     list: (page = 1, pageSize = 10) =>
-      request<{ items: Article[]; total: number }>(`/articles?page=${page}&pageSize=${pageSize}`),
-    getBySlug: (slug: string) => request<Article>(`/articles/${slug}`),
-    create: (data: Partial<Article>) => request<Article>("/articles", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<Article>) => request<void>(`/articles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => request<void>(`/articles/${id}`, { method: "DELETE" }),
-    publish: (id: string) => request<void>(`/articles/${id}/publish`, { method: "PUT" }),
+      request<{ items: Article[]; total: number }>(`/Articles?page=${page}&pageSize=${pageSize}`),
+    getBySlug: (slug: string) => request<Article>(`/Articles/${slug}`),
+    create: (data: Partial<Article>) => request<Article>("/Articles", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Article>) => request<void>(`/Articles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/Articles/${id}`, { method: "DELETE" }),
+    publish: (id: string) => request<void>(`/Articles/${id}/publish`, { method: "PUT" }),
   },
 
   // ─── FAQs ────────────────────────────────────────────
   faqs: {
     list: (language?: string) => {
       const qs = language ? `?language=${language}` : "";
-      return request<Faq[]>(`/faqs${qs}`);
+      return request<Faq[]>(`/Faqs${qs}`);
     },
-    create: (data: Partial<Faq>) => request<Faq>("/faqs", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<Faq>) => request<void>(`/faqs/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => request<void>(`/faqs/${id}`, { method: "DELETE" }),
+    create: (data: Partial<Faq>) => request<Faq>("/Faqs", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Faq>) => request<void>(`/Faqs/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/Faqs/${id}`, { method: "DELETE" }),
   },
 
   // ─── Discounts / Coupons ─────────────────────────────
   discounts: {
-    list: () => request<Discount[]>("/discount"),
-    get: (id: string) => request<Discount>(`/discount/${id}`),
-    create: (data: Partial<Discount>) => request<Discount>("/discount", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<Discount>) => request<Discount>(`/discount/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-    delete: (id: string) => request<void>(`/discount/${id}`, { method: "DELETE" }),
-    listCoupons: (discountId?: string) => {
-      const qs = discountId ? `?discountId=${discountId}` : "";
-      return request<Coupon[]>(`/discount/coupons${qs}`);
-    },
-    createCoupon: (data: Partial<Coupon>) => request<Coupon>("/discount/coupons", { method: "POST", body: JSON.stringify(data) }),
-    validateCoupon: (code: string) => request<{ valid: boolean; discount: number }>(`/discount/validate/${code}`),
+    list: () => request<Discount[]>("/Discount/discounts"),
+    get: (id: string) => request<Discount>(`/Discount/discounts/${id}`),
+    create: (data: Partial<Discount>) => request<Discount>("/Discount/discounts", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Discount>) => request<Discount>(`/Discount/discounts/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/Discount/discounts/${id}`, { method: "DELETE" }),
+    listCoupons: () => request<Coupon[]>("/Discount/coupons"),
+    createCoupon: (data: Partial<Coupon>) => request<Coupon>("/Discount/coupons", { method: "POST", body: JSON.stringify(data) }),
+    updateCoupon: (id: string, data: Partial<Coupon>) => request<Coupon>(`/Discount/coupons/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    deleteCoupon: (id: string) => request<void>(`/Discount/coupons/${id}`, { method: "DELETE" }),
+    validateCoupon: (code: string, planId: string) => request<{ valid: boolean; discount: number }>("/Discount/coupons/validate", { method: "POST", body: JSON.stringify({ code, planId }) }),
   },
 
   // ─── Statistics ──────────────────────────────────────
