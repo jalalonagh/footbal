@@ -47,6 +47,9 @@ public static class ServiceCollectionExtensions
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.AddScoped<IDiscountService, DiscountService>();
 
+        services.AddHttpClient<IAIService, AIService>();
+        services.Configure<AISettings>(configuration.GetSection("AI"));
+
         services.AddStackExchangeRedisCache(options =>
         {
             options.Configuration = configuration.GetConnectionString("Redis");

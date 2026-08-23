@@ -11,250 +11,267 @@ export interface PlayerData {
   hasBall: boolean;
   isTarget: boolean;
   isDefender: boolean;
+  isGoalkeeper: boolean;
   position: string;
+  direction: { x: number; y: number } | null;
+  suggestedDirection: { x: number; y: number } | null;
+  wrongDirection: { x: number; y: number } | null;
 }
 
 export interface BallData {
   x: number;
   y: number;
+  holderId: string | null;
+  direction: { x: number; y: number } | null;
+  suggestedDirection: { x: number; y: number } | null;
+  wrongDirection: { x: number; y: number } | null;
+}
+
+export type DirectionMode = "current" | "suggested" | "wrong" | "all";
+
+export interface AISuggestion {
+  playerId: string;
+  moveX: number;
+  moveY: number;
+  action: string;
+  reason: string;
 }
 
 interface FootballPitchProps {
   players: PlayerData[];
   ball: BallData;
+  selectedPlayerId: string | null;
+  directionMode: DirectionMode;
   onPlayerMove?: (playerId: string, x: number, y: number) => void;
   onBallMove?: (x: number, y: number) => void;
-  onPitchClick?: (x: number, y: number) => void;
-  showMovementPath?: boolean;
-  movementPath?: { x: number; y: number }[];
-  optimalPath?: { x: number; y: number }[];
-  highlightZone?: { x: number; y: number; radius: number; color: string }[];
+  onPlayerSelect?: (playerId: string | null) => void;
+  onDirectionSet?: (playerId: string, dx: number, dy: number) => void;
+  onBallDirectionSet?: (dx: number, dy: number) => void;
   disabled?: boolean;
   width?: number;
   height?: number;
+  aiSuggestions?: AISuggestion[];
+  showAISuggestions?: boolean;
 }
 
+const DIR_LEN = 18;
+
 export default function FootballPitch({
-  players,
-  ball,
-  onPlayerMove,
-  onBallMove,
-  onPitchClick,
-  showMovementPath = false,
-  movementPath = [],
-  optimalPath = [],
-  highlightZone = [],
-  disabled = false,
-  width = 800,
-  height = 520,
+  players, ball, selectedPlayerId, directionMode,
+  onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet,
+  disabled = false, width = 800, height = 520,
+  aiSuggestions = [], showAISuggestions = false,
 }: FootballPitchProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const didDrag = useRef(false);
+  const clickTimer = useRef<NodeJS.Timeout | null>(null);
 
   const toSvgX = (x: number) => (x / 100) * width;
   const toSvgY = (y: number) => (y / 100) * height;
   const toPitchX = (svgX: number) => (svgX / width) * 100;
   const toPitchY = (svgY: number) => (svgY / height) * 100;
 
-  const getMousePos = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      if (!svgRef.current) return { x: 0, y: 0 };
-      const rect = svgRef.current.getBoundingClientRect();
-      let clientX: number, clientY: number;
-      if ("touches" in e) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-      return {
-        x: toPitchX(clientX - rect.left),
-        y: toPitchY(clientY - rect.top),
-      };
-    },
-    [width, height]
-  );
+  const getMousePos = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const rect = svgRef.current.getBoundingClientRect();
+    let cx: number, cy: number;
+    if ("touches" in e) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+    else { cx = e.clientX; cy = e.clientY; }
+    return { x: toPitchX(cx - rect.left), y: toPitchY(cy - rect.top) };
+  }, [width, height]);
 
-  const handleMouseDown = useCallback(
-    (playerId: string, e: React.MouseEvent) => {
-      if (disabled) return;
-      e.stopPropagation();
-      const pos = getMousePos(e);
-      const player = players.find((p) => p.id === playerId);
+  const handlePlayerMouseDown = useCallback((playerId: string, e: React.MouseEvent) => {
+    if (disabled || directionMode === "all") return;
+    e.stopPropagation();
+    e.preventDefault();
+    didDrag.current = false;
+    const pos = getMousePos(e);
+    const player = players.find((p) => p.id === playerId);
+    if (player) {
+      onPlayerSelect?.(playerId === selectedPlayerId ? null : playerId);
+      setDragging(playerId);
+      setDragOffset({ x: pos.x - player.x, y: pos.y - player.y });
+    }
+  }, [disabled, directionMode, getMousePos, players, selectedPlayerId, onPlayerSelect]);
+
+  const handleBallMouseDown = useCallback((e: React.MouseEvent) => {
+    if (disabled || directionMode === "all") return;
+    e.stopPropagation();
+    const pos = getMousePos(e);
+    onPlayerSelect?.(null);
+    setDragging("ball");
+    setDragOffset({ x: pos.x - ball.x, y: pos.y - ball.y });
+  }, [disabled, directionMode, getMousePos, ball, onPlayerSelect]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragging) return;
+    didDrag.current = true;
+    const pos = getMousePos(e);
+    const nx = Math.max(2, Math.min(98, pos.x - dragOffset.x));
+    const ny = Math.max(2, Math.min(98, pos.y - dragOffset.y));
+    if (dragging === "ball") {
+      onBallMove?.(nx, ny);
+    } else {
+      onPlayerMove?.(dragging, nx, ny);
+      if (ball.holderId === dragging) {
+        onBallMove?.(nx, ny);
+      }
+    }
+  }, [dragging, dragOffset, getMousePos, onPlayerMove, onBallMove, ball.holderId]);
+
+  const handleMouseUp = useCallback(() => setDragging(null), []);
+
+  const handlePitchClick = useCallback((e: React.MouseEvent) => {
+    if (disabled || dragging || directionMode === "all") return;
+    if (didDrag.current) {
+      didDrag.current = false;
+      return;
+    }
+    const pos = getMousePos(e);
+    const clickedOnPlayer = players.some((p) => {
+      const dx = pos.x - p.x;
+      const dy = pos.y - p.y;
+      return Math.sqrt(dx * dx + dy * dy) < 5;
+    });
+    if (clickedOnPlayer) return;
+    if (selectedPlayerId) {
+      const player = players.find((p) => p.id === selectedPlayerId);
       if (player) {
-        setDragging(playerId);
-        setDragOffset({ x: pos.x - player.x, y: pos.y - player.y });
+        const dx = pos.x - player.x;
+        const dy = pos.y - player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 3) {
+          const ndx = (dx / dist) * DIR_LEN;
+          const ndy = (dy / dist) * DIR_LEN;
+          onDirectionSet?.(selectedPlayerId, ndx, ndy);
+          return;
+        }
       }
-    },
-    [disabled, getMousePos, players]
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!dragging) return;
-      const pos = getMousePos(e);
-      const newX = Math.max(0, Math.min(100, pos.x - dragOffset.x));
-      const newY = Math.max(0, Math.min(100, pos.y - dragOffset.y));
-      onPlayerMove?.(dragging, newX, newY);
-    },
-    [dragging, dragOffset, getMousePos, onPlayerMove]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setDragging(null);
-  }, []);
-
-  const handlePitchClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (disabled || dragging) return;
-      const pos = getMousePos(e);
-      onPitchClick?.(pos.x, pos.y);
-    },
-    [disabled, dragging, getMousePos, onPitchClick]
-  );
+    }
+    onPlayerSelect?.(null);
+  }, [disabled, dragging, directionMode, selectedPlayerId, getMousePos, players, onDirectionSet, onPlayerSelect]);
 
   useEffect(() => {
-    const handleGlobalMouseUp = () => setDragging(null);
-    window.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+    const h = () => setDragging(null);
+    window.addEventListener("mouseup", h);
+    return () => window.removeEventListener("mouseup", h);
   }, []);
 
-  const pathToD = (path: { x: number; y: number }[]) => {
-    if (path.length < 2) return "";
-    return path.map((p, i) => `${i === 0 ? "M" : "L"} ${toSvgX(p.x)} ${toSvgY(p.y)}`).join(" ");
+  const arrowPts = (ex: number, ey: number, dx: number, dy: number) => {
+    const sx = toSvgX(ex), sy = toSvgY(ey);
+    const endX = toSvgX(ex + dx * 0.5), endY = toSvgY(ey + dy * 0.5);
+    const a = Math.atan2(endY - sy, endX - sx);
+    const s = 6;
+    return { sx, sy, endX, endY,
+      a1x: endX - s * Math.cos(a - Math.PI / 6), a1y: endY - s * Math.sin(a - Math.PI / 6),
+      a2x: endX - s * Math.cos(a + Math.PI / 6), a2y: endY - s * Math.sin(a + Math.PI / 6),
+    };
+  };
+
+  const renderArrow = (ex: number, ey: number, dx: number, dy: number, color: string, key: string, dashed = false) => {
+    const p = arrowPts(ex, ey, dx, dy);
+    return (
+      <g key={key}>
+        <line x1={p.sx} y1={p.sy} x2={p.endX} y2={p.endY} stroke={color} strokeWidth="2.5" opacity="0.9" strokeDasharray={dashed ? "6,3" : "none"} />
+        <polygon points={`${p.endX},${p.endY} ${p.a1x},${p.a1y} ${p.a2x},${p.a2y}`} fill={color} opacity="0.9" />
+      </g>
+    );
   };
 
   return (
-    <svg
-      ref={svgRef}
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+    <svg ref={svgRef} width={width} height={height} viewBox={`0 0 ${width} ${height}`}
       className="rounded-lg shadow-lg cursor-crosshair select-none"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onClick={handlePitchClick}
-      onTouchEnd={handleMouseUp}
-    >
+      onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onClick={handlePitchClick} onTouchEnd={handleMouseUp}>
       <defs>
         <pattern id="grass" patternUnits="userSpaceOnUse" width="20" height="20">
           <rect width="20" height="20" fill="#2d8a4e" />
           <rect width="10" height="20" fill="#34a853" />
         </pattern>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        <filter id="glow"><feGaussianBlur stdDeviation="2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        <filter id="selGlow"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
       </defs>
 
-      <rect x="0" y="0" width={width} height={height} fill="url(#grass)" />
-
+      <rect width={width} height={height} fill="url(#grass)" />
       <rect x="2" y="2" width={width - 4} height={height - 4} fill="none" stroke="white" strokeWidth="2" />
-
       <line x1={width / 2} y1="2" x2={width / 2} y2={height - 2} stroke="white" strokeWidth="2" />
       <circle cx={width / 2} cy={height / 2} r="50" fill="none" stroke="white" strokeWidth="2" />
       <circle cx={width / 2} cy={height / 2} r="3" fill="white" />
-
       <rect x="2" y={height / 2 - 80} width="110" height="160" fill="none" stroke="white" strokeWidth="2" rx="5" />
       <rect x="2" y={height / 2 - 35} width="45" height="70" fill="none" stroke="white" strokeWidth="2" rx="3" />
       <circle cx="70" cy={height / 2} r="3" fill="white" />
-
       <rect x={width - 112} y={height / 2 - 80} width="110" height="160" fill="none" stroke="white" strokeWidth="2" rx="5" />
       <rect x={width - 47} y={height / 2 - 35} width="45" height="70" fill="none" stroke="white" strokeWidth="2" rx="3" />
       <circle cx={width - 68} cy={height / 2} r="3" fill="white" />
+      <path d="M 2 15 A 15 15 0 0 1 15 2" fill="none" stroke="white" strokeWidth="2" />
+      <path d={`M ${width - 15} 2 A 15 15 0 0 1 ${width - 2} 15`} fill="none" stroke="white" strokeWidth="2" />
+      <path d={`M 2 ${height - 15} A 15 15 0 0 0 15 ${height - 2}`} fill="none" stroke="white" strokeWidth="2" />
+      <path d={`M ${width - 15} ${height - 2} A 15 15 0 0 0 ${width - 2} ${height - 15}`} fill="none" stroke="white" strokeWidth="2" />
 
-      <line x1="2" y1="3" x2="20" y2="3" stroke="white" strokeWidth="4" />
-      <line x1="2" y1={height - 3} x2="20" y2={height - 3} stroke="white" strokeWidth="4" />
-      <line x1={width - 20} y1="3" x2={width - 2} y2="3" stroke="white" strokeWidth="4" />
-      <line x1={width - 20} y1={height - 3} x2={width - 2} y2={height - 3} stroke="white" strokeWidth="4" />
+      {players.map((p) => {
+        if (directionMode === "all") {
+          return (
+            <g key={`dirs-${p.id}`}>
+              {p.direction && renderArrow(p.x, p.y, p.direction.x, p.direction.y, "#fff", `c-${p.id}`)}
+              {p.suggestedDirection && renderArrow(p.x, p.y, p.suggestedDirection.x, p.suggestedDirection.y, "#22c55e", `s-${p.id}`)}
+              {p.wrongDirection && renderArrow(p.x, p.y, p.wrongDirection.x, p.wrongDirection.y, "#ef4444", `w-${p.id}`, true)}
+            </g>
+          );
+        }
+        const dir = directionMode === "current" ? p.direction : directionMode === "suggested" ? p.suggestedDirection : p.wrongDirection;
+        if (!dir) return null;
+        const c = directionMode === "current" ? "#fff" : directionMode === "suggested" ? "#22c55e" : "#ef4444";
+        return renderArrow(p.x, p.y, dir.x, dir.y, c, `d-${p.id}`, directionMode === "wrong");
+      })}
+      {(() => {
+        if (directionMode === "all") {
+          return (
+            <g key="dirs-ball">
+              {ball.direction && renderArrow(ball.x, ball.y, ball.direction.x, ball.direction.y, "#fff", "bc")}
+              {ball.suggestedDirection && renderArrow(ball.x, ball.y, ball.suggestedDirection.x, ball.suggestedDirection.y, "#22c55e", "bs")}
+              {ball.wrongDirection && renderArrow(ball.x, ball.y, ball.wrongDirection.x, ball.wrongDirection.y, "#ef4444", "bw", true)}
+            </g>
+          );
+        }
+        const dir = directionMode === "current" ? ball.direction : directionMode === "suggested" ? ball.suggestedDirection : ball.wrongDirection;
+        if (!dir) return null;
+        const c = directionMode === "current" ? "#fff" : directionMode === "suggested" ? "#22c55e" : "#ef4444";
+        return renderArrow(ball.x, ball.y, dir.x, dir.y, c, "bd", directionMode === "wrong");
+      })()}
 
-      {highlightZone.map((zone, i) => (
-        <circle
-          key={`zone-${i}`}
-          cx={toSvgX(zone.x)}
-          cy={toSvgY(zone.y)}
-          r={zone.radius * (width / 100)}
-          fill={zone.color}
-          opacity="0.3"
-        />
-      ))}
+      {showAISuggestions && aiSuggestions.map((suggestion) => {
+        const player = players.find((p) => p.id === suggestion.playerId);
+        if (!player) return null;
+        const color = "#a855f7";
+        return renderArrow(player.x, player.y, suggestion.moveX, suggestion.moveY, color, `ai-${suggestion.playerId}`, false);
+      })}
 
-      {optimalPath.length > 1 && (
-        <path
-          d={pathToD(optimalPath)}
-          fill="none"
-          stroke="#22c55e"
-          strokeWidth="3"
-          strokeDasharray="8,4"
-          opacity="0.8"
-        />
-      )}
+      {players.map((p) => {
+        const sel = p.id === selectedPlayerId;
+        const gk = p.isGoalkeeper;
+        const fill = p.teamId === 1 ? (gk ? "#f59e0b" : "#3b82f6") : (gk ? "#dc2626" : "#ef4444");
+        return (
+          <g key={p.id} transform={`translate(${toSvgX(p.x)}, ${toSvgY(p.y)})`}
+            onMouseDown={(e) => handlePlayerMouseDown(p.id, e)}
+            className={disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"}
+            filter={sel ? "url(#selGlow)" : undefined}>
+            {sel && <rect x="-16" y="-24" width="32" height="6" rx="3" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />}
+            <circle r="14" fill={fill} stroke={sel ? "#eab308" : "white"} strokeWidth={sel ? 3 : 2} />
+            {gk && <><line x1="-6" y1="-6" x2="6" y2="6" stroke="white" strokeWidth="2" /><line x1="6" y1="-6" x2="-6" y2="6" stroke="white" strokeWidth="2" /></>}
+            <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="10" fontWeight="bold">{p.number}</text>
+            <text textAnchor="middle" y="22" fill="white" fontSize="7" opacity="0.8">{p.position}</text>
+            {ball.holderId === p.id && <circle r="6" cx="12" cy="-12" fill="white" stroke="#333" strokeWidth="1.5" />}
+          </g>
+        );
+      })}
 
-      {showMovementPath && movementPath.length > 1 && (
-        <path
-          d={pathToD(movementPath)}
-          fill="none"
-          stroke="#3b82f6"
-          strokeWidth="3"
-          strokeDasharray="8,4"
-          opacity="0.8"
-        />
-      )}
-
-      {players.map((player) => (
-        <g
-          key={player.id}
-          transform={`translate(${toSvgX(player.x)}, ${toSvgY(player.y)})`}
-          onMouseDown={(e) => handleMouseDown(player.id, e)}
-          className={disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"}
-          filter={player.isTarget ? "url(#glow)" : undefined}
-        >
-          <circle
-            r="14"
-            fill={player.teamId === 1 ? (player.isTarget ? "#fbbf24" : "#3b82f6") : "#ef4444"}
-            stroke="white"
-            strokeWidth="2"
-          />
-          <text
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill="white"
-            fontSize="10"
-            fontWeight="bold"
-            fontFamily="sans-serif"
-          >
-            {player.number}
-          </text>
-          {player.hasBall && (
-            <circle r="5" cx="10" cy="-10" fill="#f97316" stroke="white" strokeWidth="1" />
-          )}
-          <text
-            textAnchor="middle"
-            y="22"
-            fill="white"
-            fontSize="7"
-            fontFamily="sans-serif"
-            opacity="0.8"
-          >
-            {player.position}
-          </text>
-        </g>
-      ))}
-
-      <circle
-        cx={toSvgX(ball.x)}
-        cy={toSvgY(ball.y)}
-        r="6"
-        fill="white"
-        stroke="#333"
-        strokeWidth="1.5"
-      />
-      <circle cx={toSvgX(ball.x)} cy={toSvgY(ball.y)} r="2" fill="#333" />
+      <g onMouseDown={handleBallMouseDown}
+        className={disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"}
+        style={{ display: ball.holderId ? "none" : "block" }}>
+        <circle cx={toSvgX(ball.x)} cy={toSvgY(ball.y)} r="7" fill="white" stroke="#333" strokeWidth="1.5" />
+        <circle cx={toSvgX(ball.x)} cy={toSvgY(ball.y)} r="2" fill="#333" />
+      </g>
     </svg>
   );
 }

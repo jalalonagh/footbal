@@ -237,4 +237,70 @@ export const api = {
     recommendations: (gameState: GameState, playerId: string) =>
       request<any[]>(`/tactical/recommendations?playerId=${playerId}`, { method: "POST", body: JSON.stringify(gameState) }),
   },
+
+  // ─── AI ──────────────────────────────────────────────
+  ai: {
+    chat: (systemPrompt: string, userMessage: string, temperature = 0.7, maxTokens = 2048) =>
+      request<string>("/ai/chat", { method: "POST", body: JSON.stringify({ systemPrompt, userMessage, temperature, maxTokens }) }),
+    analyzeTactical: (scenario: string, players: string) =>
+      request<string>("/ai/analyze-tactical", { method: "POST", body: JSON.stringify({ scenario, players }) }),
+    generateTrainingPlan: (playerLevel: string, focusArea: string) =>
+      request<string>("/ai/generate-training-plan", { method: "POST", body: JSON.stringify({ playerLevel, focusArea }) }),
+    evaluatePerformance: (stats: string) =>
+      request<string>("/ai/evaluate-performance", { method: "POST", body: JSON.stringify({ stats }) }),
+    getTacticalSuggestion: (data: {
+      selectedPlayerId: string;
+      selectedPlayerNumber: number;
+      selectedPlayerPosition: string;
+      selectedPlayerTeam: number;
+      selectedPlayerX: number;
+      selectedPlayerY: number;
+      hasBall: boolean;
+      allPlayers: Array<{
+        id: string;
+        position: string;
+        teamId: number;
+        x: number;
+        y: number;
+        number: number;
+        isGoalkeeper: boolean;
+        hasBall: boolean;
+      }>;
+      ballHolder?: {
+        id: string;
+        position: string;
+        teamId: number;
+        x: number;
+        y: number;
+        number: number;
+        isGoalkeeper: boolean;
+        hasBall: boolean;
+      };
+      scenarioContext?: string;
+    }) => request<{
+      explanation: string;
+      selectedPlayerSuggestion: {
+        playerId: string;
+        moveX: number;
+        moveY: number;
+        action: string;
+        reason: string;
+      };
+      teammateSuggestions: Array<{
+        playerId: string;
+        moveX: number;
+        moveY: number;
+        action: string;
+        reason: string;
+      }>;
+      passTarget?: {
+        playerId: string;
+        moveX: number;
+        moveY: number;
+        action: string;
+        reason: string;
+      };
+    }>("/ai/tactical-suggestion", { method: "POST", body: JSON.stringify(data) }),
+    checkAccess: () => request<boolean>("/ai/check-ai-access", { method: "POST" }),
+  },
 };
