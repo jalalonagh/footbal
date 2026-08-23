@@ -158,6 +158,7 @@
     "changePassword": "تغییر رمز عبور",
     "currentPassword": "رمز عبور فعلی",
     "newPassword": "رمز عبور جدید",
+    "confirmPassword": "تایید رمز عبور",
     "saveChanges": "ذخیره تغییرات",
     "saved": "تغییرات ذخیره شد",
     "phone": "تلفن",

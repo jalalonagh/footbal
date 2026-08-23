@@ -158,6 +158,7 @@
     "changePassword": "Change Password",
     "currentPassword": "Current Password",
     "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
     "saveChanges": "Save Changes",
     "saved": "Changes saved",
     "phone": "Phone",
