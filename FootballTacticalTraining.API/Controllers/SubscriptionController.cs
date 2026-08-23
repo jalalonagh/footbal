@@ -181,7 +181,18 @@ public class SubscriptionController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var subscription = await _subscriptionService.GetActiveSubscriptionAsync(userId);
         if (subscription == null) return NotFound();
-        return Ok(subscription);
+
+        var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(subscription.PlanId);
+
+        return Ok(new
+        {
+            id = subscription.Id,
+            planId = subscription.PlanId,
+            planName = plan?.Name ?? "Free",
+            status = subscription.Status.ToString(),
+            startDate = subscription.StartDate,
+            endDate = subscription.EndDate
+        });
     }
 
     [Authorize]

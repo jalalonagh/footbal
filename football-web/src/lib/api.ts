@@ -2,7 +2,7 @@ import type { AuthResponse, User, Scenario, ScenarioPlayer, ScenarioSolution, Sc
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5144/api";
 
-async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function request<T>(endpoint: string, options?: RequestInit, isRetry = false): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -11,6 +11,31 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+
+  if (response.status === 401 && !isRetry && typeof window !== "undefined") {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      try {
+        const refreshResponse = await fetch(`${API_BASE}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json();
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("refreshToken", data.refreshToken);
+          localStorage.setItem("user", JSON.stringify(data));
+          return request<T>(endpoint, options, true);
+        }
+      } catch {}
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      if (typeof window !== "undefined") window.location.href = "/login";
+    }
+  }
+
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error || "Request failed");

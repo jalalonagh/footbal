@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { Faq } from "@/lib/types";
+import { Link } from "@/i18n/routing";
 
 export default function FaqPage() {
   const t = useTranslations("cms");
-  const nav = useTranslations("nav");
-  const router = useRouter();
+  const tNav = useTranslations("nav");
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -24,14 +23,14 @@ export default function FaqPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <nav className="bg-gray-800 px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.push("/")} className="text-white hover:text-green-400">{nav("home")}</button>
+        <Link href="/" className="text-white hover:text-green-400">{tNav("home")}</Link>
         <h1 className="text-xl font-bold">{t("faqTitle")}</h1>
       </nav>
       <main className="max-w-3xl mx-auto px-6 py-8">
         {loading ? (
-          <div className="text-center py-20 text-gray-400">Loading...</div>
+          <div className="text-center py-20 text-gray-400">{t("loading")}</div>
         ) : faqs.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">No FAQs yet.</div>
+          <div className="text-center py-20 text-gray-400">{t("noFaqs")}</div>
         ) : (
           <div className="space-y-4">
             {faqs.map((faq) => (

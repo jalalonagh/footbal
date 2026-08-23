@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("payment");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [message, setMessage] = useState("Processing payment...");
+  const [message, setMessage] = useState(t("processing"));
 
   useEffect(() => {
     const authority = searchParams.get("Authority");
@@ -17,17 +19,16 @@ function CallbackContent() {
 
     if (!authority || !zpStatus) {
       setStatus("error");
-      setMessage("Invalid payment response. No authority or status received.");
+      setMessage(t("invalidResponse"));
       return;
     }
 
     if (zpStatus !== "OK" && zpStatus !== "100" && zpStatus !== "101") {
       setStatus("error");
-      setMessage("Payment was cancelled or failed.");
+      setMessage(t("cancelled"));
       return;
     }
 
-    // Call backend to verify and activate subscription
     const verifyPayment = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -41,21 +42,21 @@ function CallbackContent() {
 
         if (response.ok || response.redirected) {
           setStatus("success");
-          setMessage("Payment verified! Redirecting...");
+          setMessage(t("verified"));
           setTimeout(() => router.push("/payment/success"), 1500);
         } else {
           const text = await response.text();
           setStatus("error");
-          setMessage(text || "Payment verification failed. Please contact support.");
+          setMessage(text || t("verificationFailed"));
         }
       } catch (err) {
         setStatus("error");
-        setMessage("Could not verify payment. Please try again or contact support.");
+        setMessage(t("couldNotVerify"));
       }
     };
 
     verifyPayment();
-  }, [searchParams, router]);
+  }, [searchParams, router, t]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -63,7 +64,7 @@ function CallbackContent() {
         {status === "loading" && (
           <>
             <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-            <h1 className="text-xl font-bold text-white mb-2">Processing Payment</h1>
+            <h1 className="text-xl font-bold text-white mb-2">{t("processingPayment")}</h1>
             <p className="text-gray-400">{message}</p>
           </>
         )}
@@ -74,7 +75,7 @@ function CallbackContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-white mb-2">Payment Successful!</h1>
+            <h1 className="text-xl font-bold text-white mb-2">{t("successTitle")}</h1>
             <p className="text-gray-400">{message}</p>
           </>
         )}
@@ -85,10 +86,10 @@ function CallbackContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-white mb-2">Payment Error</h1>
+            <h1 className="text-xl font-bold text-white mb-2">{t("paymentError")}</h1>
             <p className="text-gray-400 mb-6">{message}</p>
             <button onClick={() => router.push("/pricing")} className="px-6 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition">
-              Try Again
+              {t("tryAgain")}
             </button>
           </>
         )}
