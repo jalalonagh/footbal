@@ -7,35 +7,25 @@ namespace FootballTacticalTraining.Infrastructure.Services;
 
 public class AIService : IAIService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly HttpClient _httpClient;
     private readonly AISettings _settings;
 
-    public AIService(IHttpClientFactory httpClientFactory, IOptions<AISettings> settings)
+    public AIService(HttpClient httpClient, IOptions<AISettings> settings)
     {
-        _httpClientFactory = httpClientFactory;
+        _httpClient = httpClient;
         _settings = settings.Value;
     }
 
-    public async Task<string> ChatAsync(string systemPrompt, string userMessage, decimal temperature = 0.7m, int maxTokens = 2048)
+    private async Task<string> SendRequestAsync(object request)
     {
-        var client = _httpClientFactory.CreateClient();
-        var request = new
-        {
-            model = _settings.Model,
-            messages = new[]
-            {
-                new { role = "system", content = systemPrompt },
-                new { role = "user", content = userMessage }
-            },
-            temperature,
-            max_tokens = maxTokens
-        };
-
         var json = JsonSerializer.Serialize(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        content.Headers.Add("Authorization", $"Bearer {_settings.ApiKey}");
+        
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}/chat/completions");
+        httpRequest.Content = content;
+        httpRequest.Headers.Add("Authorization", $"Bearer {_settings.ApiKey}");
 
-        var response = await client.PostAsync($"{_settings.BaseUrl}/chat/completions", content);
+        var response = await _httpClient.SendAsync(httpRequest);
         response.EnsureSuccessStatusCode();
 
         var responseJson = await response.Content.ReadAsStringAsync();
@@ -48,6 +38,23 @@ public class AIService : IAIService
             return message.GetProperty("content").GetString() ?? "";
         }
         return "";
+    }
+
+    public async Task<string> ChatAsync(string systemPrompt, string userMessage, decimal temperature = 0.7m, int maxTokens = 2048)
+    {
+        var request = new
+        {
+            model = _settings.Model,
+            messages = new[]
+            {
+                new { role = "system", content = systemPrompt },
+                new { role = "user", content = userMessage }
+            },
+            temperature,
+            max_tokens = maxTokens
+        };
+
+        return await SendRequestAsync(request);
     }
 
     public async Task<string> AnalyzeTacticalAsync(string scenario, string players)

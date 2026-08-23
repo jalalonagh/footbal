@@ -50,10 +50,19 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<IAIService, AIService>();
         services.Configure<AISettings>(configuration.GetSection("AI"));
 
-        services.AddStackExchangeRedisCache(options =>
+        var redisConnection = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrEmpty(redisConnection))
         {
-            options.Configuration = configuration.GetConnectionString("Redis");
-        });
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnection;
+                options.InstanceName = "football:";
+            });
+        }
+        else
+        {
+            services.AddDistributedMemoryCache();
+        }
 
         return services;
     }

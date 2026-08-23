@@ -47,6 +47,7 @@ interface FootballPitchProps {
   onPlayerSelect?: (playerId: string | null) => void;
   onDirectionSet?: (playerId: string, dx: number, dy: number) => void;
   onBallDirectionSet?: (dx: number, dy: number) => void;
+  onBallClaimed?: (playerId: string) => void;
   disabled?: boolean;
   width?: number;
   height?: number;
@@ -58,7 +59,7 @@ const DIR_LEN = 18;
 
 export default function FootballPitch({
   players, ball, selectedPlayerId, directionMode,
-  onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet,
+  onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet, onBallClaimed,
   disabled = false, width = 800, height = 520,
   aiSuggestions = [], showAISuggestions = false,
 }: FootballPitchProps) {
@@ -121,7 +122,19 @@ export default function FootballPitch({
     }
   }, [dragging, dragOffset, getMousePos, onPlayerMove, onBallMove, ball.holderId]);
 
-  const handleMouseUp = useCallback(() => setDragging(null), []);
+  const handleMouseUp = useCallback(() => {
+    if (dragging === "ball") {
+      const nearest = players.find((p) => {
+        const dx = ball.x - p.x;
+        const dy = ball.y - p.y;
+        return Math.sqrt(dx * dx + dy * dy) < 8;
+      });
+      if (nearest && !disabled) {
+        onBallClaimed?.(nearest.id);
+      }
+    }
+    setDragging(null);
+  }, [dragging, players, ball.x, ball.y, disabled, onBallClaimed]);
 
   const handlePitchClick = useCallback((e: React.MouseEvent) => {
     if (disabled || dragging || directionMode === "all") return;
@@ -161,9 +174,9 @@ export default function FootballPitch({
 
   const arrowPts = (ex: number, ey: number, dx: number, dy: number) => {
     const sx = toSvgX(ex), sy = toSvgY(ey);
-    const endX = toSvgX(ex + dx * 0.5), endY = toSvgY(ey + dy * 0.5);
+    const endX = toSvgX(ex + dx * 0.7), endY = toSvgY(ey + dy * 0.7);
     const a = Math.atan2(endY - sy, endX - sx);
-    const s = 6;
+    const s = 10;
     return { sx, sy, endX, endY,
       a1x: endX - s * Math.cos(a - Math.PI / 6), a1y: endY - s * Math.sin(a - Math.PI / 6),
       a2x: endX - s * Math.cos(a + Math.PI / 6), a2y: endY - s * Math.sin(a + Math.PI / 6),
@@ -174,7 +187,7 @@ export default function FootballPitch({
     const p = arrowPts(ex, ey, dx, dy);
     return (
       <g key={key}>
-        <line x1={p.sx} y1={p.sy} x2={p.endX} y2={p.endY} stroke={color} strokeWidth="2.5" opacity="0.9" strokeDasharray={dashed ? "6,3" : "none"} />
+        <line x1={p.sx} y1={p.sy} x2={p.endX} y2={p.endY} stroke={color} strokeWidth="4" opacity="0.9" strokeDasharray={dashed ? "8,4" : "none"} />
         <polygon points={`${p.endX},${p.endY} ${p.a1x},${p.a1y} ${p.a2x},${p.a2y}`} fill={color} opacity="0.9" />
       </g>
     );
@@ -185,9 +198,9 @@ export default function FootballPitch({
       className="rounded-lg shadow-lg cursor-crosshair select-none"
       onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onClick={handlePitchClick} onTouchEnd={handleMouseUp}>
       <defs>
-        <pattern id="grass" patternUnits="userSpaceOnUse" width="20" height="20">
-          <rect width="20" height="20" fill="#2d8a4e" />
-          <rect width="10" height="20" fill="#34a853" />
+        <pattern id="grass" patternUnits="userSpaceOnUse" width="30" height="30">
+          <rect width="30" height="30" fill="#2d8a4e" />
+          <rect width="15" height="30" fill="#34a853" />
         </pattern>
         <filter id="glow"><feGaussianBlur stdDeviation="2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         <filter id="selGlow"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>

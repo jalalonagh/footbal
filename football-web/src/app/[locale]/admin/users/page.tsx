@@ -22,11 +22,19 @@ export default function AdminUsers() {
 
   const loadUsers = async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await api.auth.getUsers(1, 50);
       setUsers(res.items);
-    } catch {
-      setError("Failed to load users");
+    } catch (e: any) {
+      const msg = e?.message || "Failed to load users";
+      if (msg.includes("403") || msg.includes("Forbidden")) {
+        setError("Access denied. You need Admin or SuperAdmin role.");
+      } else if (msg.includes("401")) {
+        setError("Unauthorized. Please login again.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }

@@ -75,6 +75,11 @@ export default function ScenarioDetailPage() {
     setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: false })));
   }, []);
 
+  const handleBallClaimed = useCallback((playerId: string) => {
+    setBall((b) => ({ ...b, holderId: playerId }));
+    setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: p.id === playerId })));
+  }, []);
+
   const handleDirectionSet = useCallback((playerId: string, dx: number, dy: number) => {
     setPlayers((prev) => prev.map((p) => {
       if (p.id !== playerId) return p;
@@ -139,7 +144,9 @@ export default function ScenarioDetailPage() {
 
       setAiExplanation(response.explanation);
       const allSuggestions: AISuggestion[] = [response.selectedPlayerSuggestion, ...response.teammateSuggestions];
-      if (response.passTarget) allSuggestions.push(response.passTarget);
+      if (response.passTarget && !allSuggestions.some(s => s.playerId === response.passTarget!.playerId)) {
+        allSuggestions.push(response.passTarget);
+      }
       setAiSuggestions(allSuggestions);
       setShowAISuggestions(true);
     } catch (err) {
@@ -187,6 +194,7 @@ export default function ScenarioDetailPage() {
             onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
             onPlayerSelect={setSelectedPlayerId}
             onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
+            onBallClaimed={handleBallClaimed}
             aiSuggestions={aiSuggestions} showAISuggestions={showAISuggestions}
           />
         </div>

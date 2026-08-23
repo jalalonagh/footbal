@@ -1,6 +1,7 @@
 using FootballTacticalTraining.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace FootballTacticalTraining.API.Controllers;
@@ -54,11 +55,11 @@ public class AIController : ControllerBase
     [Authorize]
     public async Task<ActionResult<AISuggestionResponse>> GetTacticalSuggestion([FromBody] AITacticalSuggestionRequest request)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = GetUserId();
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var hasAccess = await _subscriptionService.HasFeatureAccessAsync(Guid.Parse(userId), "ai_tactical_suggestion");
+        var hasAccess = await _subscriptionService.HasFeatureAccessAsync(Guid.Parse(userId), "AI_Coach");
         if (!hasAccess)
             return Forbid();
 
@@ -70,12 +71,19 @@ public class AIController : ControllerBase
     [Authorize]
     public async Task<ActionResult<bool>> CheckAIAccess()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = GetUserId();
         if (string.IsNullOrEmpty(userId))
             return Ok(false);
 
-        var hasAccess = await _subscriptionService.HasFeatureAccessAsync(Guid.Parse(userId), "ai_tactical_suggestion");
+        var hasAccess = await _subscriptionService.HasFeatureAccessAsync(Guid.Parse(userId), "AI_Coach");
         return Ok(hasAccess);
+    }
+
+    private string? GetUserId()
+    {
+        var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!string.IsNullOrEmpty(sub)) return sub;
+        return User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
     }
 }
 

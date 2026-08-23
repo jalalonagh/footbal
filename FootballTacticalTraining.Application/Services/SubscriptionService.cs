@@ -15,18 +15,28 @@ public class SubscriptionService : ISubscriptionService
 
     public async Task<bool> HasFeatureAccessAsync(Guid userId, string featureKey)
     {
+        var now = DateTime.UtcNow;
+        var feature = (await _unitOfWork.Repository<Feature>()
+            .FindAsync(f => f.Key == featureKey)).FirstOrDefault();
+        if (feature == null) return false;
+
         var entitlements = await _unitOfWork.Repository<UserEntitlement>()
-            .FindAsync(e => e.UserId == userId && e.Feature.Key == featureKey);
+            .FindAsync(e => e.UserId == userId && 
+                           e.FeatureId == feature.Id && 
+                           (!e.ExpiresAt.HasValue || e.ExpiresAt > now) &&
+                           (!e.RemainingUsage.HasValue || e.RemainingUsage > 0));
         
-        return entitlements.Any(e => 
-            (!e.ExpiresAt.HasValue || e.ExpiresAt > DateTime.UtcNow) &&
-            (!e.RemainingUsage.HasValue || e.RemainingUsage > 0));
+        return entitlements.Any();
     }
 
     public async Task<int?> GetRemainingUsageAsync(Guid userId, string featureKey)
     {
+        var feature = (await _unitOfWork.Repository<Feature>()
+            .FindAsync(f => f.Key == featureKey)).FirstOrDefault();
+        if (feature == null) return null;
+
         var entitlements = await _unitOfWork.Repository<UserEntitlement>()
-            .FindAsync(e => e.UserId == userId && e.Feature.Key == featureKey);
+            .FindAsync(e => e.UserId == userId && e.FeatureId == feature.Id);
         
         var active = entitlements.FirstOrDefault(e => 
             (!e.ExpiresAt.HasValue || e.ExpiresAt > DateTime.UtcNow));

@@ -60,6 +60,27 @@ public class ScenariosController : ControllerBase
         return Ok(scenarios.Skip((page - 1) * pageSize).Take(pageSize).Select(MapToDto));
     }
 
+    [HttpGet("demo")]
+    [AllowAnonymous]
+    public IActionResult GetDemo()
+    {
+        return Ok(new
+        {
+            id = Guid.NewGuid().ToString(),
+            name = "Demo Scenario",
+            description = "A demo scenario for testing",
+            category = "Midfielder",
+            difficulty = "Intermediate",
+            formation = "4-4-2",
+            gamePhase = "Attack",
+            gameMinute = 35,
+            trainingMode = "Tactical",
+            homeScore = 1,
+            awayScore = 0,
+            status = "Published"
+        });
+    }
+
     [HttpGet("{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetById(Guid id)

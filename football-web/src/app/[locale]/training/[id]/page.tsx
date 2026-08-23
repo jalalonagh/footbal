@@ -7,26 +7,62 @@ import FootballPitch, { PlayerData, BallData, DirectionMode, AISuggestion } from
 import { api } from "@/lib/api";
 import { Link } from "@/i18n/routing";
 
-const FORMATION_442: [string, number, number][] = [
-  ["GK", 1, 8], ["RB", 2, 25], ["CB", 4, 40], ["CB", 5, 55], ["LB", 3, 70],
-  ["RM", 7, 25], ["CM", 6, 40], ["CM", 8, 55], ["LM", 11, 70],
-  ["ST", 9, 38], ["ST", 10, 52],
-];
-const FORMATION_442_DEF: [string, number, number][] = [
-  ["GK", 1, 92], ["RB", 2, 75], ["CB", 4, 60], ["CB", 5, 45], ["LB", 3, 30],
-  ["RM", 7, 75], ["CM", 6, 60], ["CM", 8, 45], ["LM", 11, 30],
-  ["ST", 9, 62], ["ST", 10, 48],
-];
+type FormationEntry = [string, number, number, number];
 
-function makePlayers(): PlayerData[] {
-  const team1 = FORMATION_442.map(([pos, num, y], i) => ({
-    id: `t1-${num}`, teamId: 1, number: num, x: 15 + (i < 5 ? i * 5 : (i - 5) * 20), y,
+const FORMATIONS: Record<number, FormationEntry[]> = {
+  5: [
+    ["GK", 1, 5, 50],
+    ["CB", 4, 18, 30], ["CB", 5, 18, 70],
+    ["CM", 6, 38, 35], ["CM", 8, 38, 65],
+  ],
+  6: [
+    ["GK", 1, 5, 50],
+    ["CB", 4, 18, 30], ["CB", 5, 18, 70],
+    ["CM", 6, 35, 30], ["CM", 8, 35, 70],
+    ["ST", 9, 45, 50],
+  ],
+  7: [
+    ["GK", 1, 5, 50],
+    ["CB", 4, 18, 25], ["CB", 5, 18, 50], ["CB", 3, 18, 75],
+    ["CM", 6, 35, 30], ["CM", 8, 35, 70],
+    ["ST", 9, 45, 50],
+  ],
+  8: [
+    ["GK", 1, 5, 50],
+    ["CB", 4, 18, 25], ["CB", 5, 18, 50], ["CB", 3, 18, 75],
+    ["LM", 11, 35, 20], ["CM", 6, 35, 50], ["RM", 7, 35, 80],
+    ["ST", 9, 45, 50],
+  ],
+  9: [
+    ["GK", 1, 5, 50],
+    ["CB", 4, 18, 25], ["CB", 5, 18, 50], ["CB", 3, 18, 75],
+    ["LM", 11, 35, 18], ["CM", 6, 35, 40], ["CM", 8, 35, 60], ["RM", 7, 35, 82],
+    ["ST", 9, 45, 50],
+  ],
+  10: [
+    ["GK", 1, 5, 50],
+    ["CB", 4, 18, 25], ["CB", 5, 18, 50], ["CB", 3, 18, 75],
+    ["LM", 11, 35, 18], ["CM", 6, 35, 40], ["CM", 8, 35, 60], ["RM", 7, 35, 82],
+    ["LW", 10, 45, 25], ["RW", 17, 45, 75],
+  ],
+  11: [
+    ["GK", 1, 5, 50],
+    ["CB", 4, 18, 25], ["CB", 5, 18, 50], ["CB", 3, 18, 75],
+    ["LM", 11, 35, 18], ["CM", 6, 35, 38], ["CM", 8, 35, 62], ["RM", 7, 35, 82],
+    ["LW", 10, 45, 25], ["ST", 9, 45, 50], ["RW", 17, 45, 75],
+  ],
+};
+
+function makePlayers(count: number = 11): PlayerData[] {
+  const formation = FORMATIONS[count];
+  const team1 = formation.map(([pos, num, x, y]) => ({
+    id: `t1-${num}`, teamId: 1, number: num, x, y,
     hasBall: num === 9, isTarget: num === 9, isDefender: false,
     isGoalkeeper: pos === "GK", position: pos,
     direction: null, suggestedDirection: null, wrongDirection: null,
   }));
-  const team2 = FORMATION_442_DEF.map(([pos, num, y], i) => ({
-    id: `t2-${num}`, teamId: 2, number: num, x: 85 - (i < 5 ? i * 5 : (i - 5) * 20), y,
+  const team2 = formation.map(([pos, num, x, y]) => ({
+    id: `t2-${num}`, teamId: 2, number: num, x: 100 - x, y,
     hasBall: false, isTarget: false, isDefender: true,
     isGoalkeeper: pos === "GK", position: pos,
     direction: null, suggestedDirection: null, wrongDirection: null,
@@ -35,7 +71,7 @@ function makePlayers(): PlayerData[] {
 }
 
 function makeBall(): BallData {
-  return { x: 15 + 40, y: 38, holderId: "t1-9", direction: null, suggestedDirection: null, wrongDirection: null };
+  return { x: 50, y: 50, holderId: null, direction: null, suggestedDirection: null, wrongDirection: null };
 }
 
 interface CoachingTip {
@@ -62,6 +98,7 @@ export default function TrainingPage() {
   const [aiExplanation, setAiExplanation] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   const [hasAIAccess, setHasAIAccess] = useState<boolean | null>(null);
+  const [playerCount, setPlayerCount] = useState<number>(11);
 
   useEffect(() => {
     if (scenarioId) api.scenarios.get(scenarioId).then(setScenario).catch(() => {});
@@ -83,6 +120,32 @@ export default function TrainingPage() {
     setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: false })));
   }, []);
 
+  const handleBallClaimed = useCallback((playerId: string) => {
+    setBall((b) => ({ ...b, holderId: playerId }));
+    setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: p.id === playerId })));
+  }, []);
+
+  const handleResetPositions = useCallback(() => {
+    const formation = FORMATIONS[playerCount];
+    const team1 = formation.map(([pos, num, x, y]) => ({
+      id: `t1-${num}`, teamId: 1, number: num, x, y,
+      hasBall: num === 9, isTarget: num === 9, isDefender: false,
+      isGoalkeeper: pos === "GK", position: pos,
+      direction: null, suggestedDirection: null, wrongDirection: null,
+    }));
+    const team2 = formation.map(([pos, num, x, y]) => ({
+      id: `t2-${num}`, teamId: 2, number: num, x: 100 - x, y,
+      hasBall: false, isTarget: false, isDefender: true,
+      isGoalkeeper: pos === "GK", position: pos,
+      direction: null, suggestedDirection: null, wrongDirection: null,
+    }));
+    setPlayers([...team1, ...team2]);
+    setBall({ x: 50, y: 50, holderId: null, direction: null, suggestedDirection: null, wrongDirection: null });
+    setSelectedPlayerId(null);
+    setShowAISuggestions(false);
+    setAiSuggestions([]);
+  }, [playerCount]);
+
   const handleDirectionSet = useCallback((playerId: string, dx: number, dy: number) => {
     setPlayers((prev) => prev.map((p) => {
       if (p.id !== playerId) return p;
@@ -99,17 +162,6 @@ export default function TrainingPage() {
       return { ...b, wrongDirection: { x: dx, y: dy } };
     });
   }, [directionMode]);
-
-  const handleAutoSuggest = useCallback(() => {
-    setPlayers((prev) => prev.map((p) => {
-      if (p.isGoalkeeper) return { ...p, suggestedDirection: { x: 0, y: 0 } };
-      const dx = p.teamId === 1 ? 8 : -8;
-      const dy = (Math.random() - 0.5) * 10;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      return { ...p, suggestedDirection: { x: (dx / dist) * 18, y: (dy / dist) * 18 } };
-    }));
-    setBall((b) => ({ ...b, suggestedDirection: { x: 12, y: 0 } }));
-  }, []);
 
   const handleEvaluate = useCallback(async () => {
     try {
@@ -160,7 +212,9 @@ export default function TrainingPage() {
 
       setAiExplanation(response.explanation);
       const allSuggestions: AISuggestion[] = [response.selectedPlayerSuggestion, ...response.teammateSuggestions];
-      if (response.passTarget) allSuggestions.push(response.passTarget);
+      if (response.passTarget && !allSuggestions.some(s => s.playerId === response.passTarget!.playerId)) {
+        allSuggestions.push(response.passTarget);
+      }
       setAiSuggestions(allSuggestions);
       setShowAISuggestions(true);
     } catch (err) {
@@ -178,6 +232,13 @@ export default function TrainingPage() {
   const scoreColor = (s: number) => s >= 80 ? "text-green-600" : s >= 60 ? "text-yellow-600" : "text-red-600";
   const selPlayer = players.find((p) => p.id === selectedPlayerId);
 
+  const [zoom, setZoom] = useState(1);
+  const [showTacticalPanel, setShowTacticalPanel] = useState(false);
+  const [showActionsPanel, setShowActionsPanel] = useState(false);
+  const [showPlayerPanel, setShowPlayerPanel] = useState(false);
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const isZoomed = zoom > 1;
+
   return (
     <div className="min-h-screen bg-gray-900">
       <header className="bg-gray-800 px-6 py-3 flex items-center justify-between">
@@ -185,21 +246,30 @@ export default function TrainingPage() {
           <Link href="/" className="text-white hover:text-green-400">{tNav("home")}</Link>
           <h1 className="text-white font-bold text-lg">{scenario?.name || t("session")}</h1>
         </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setZoom((z) => Math.max(1, z - 0.25))} className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm">−</button>
+          <span className="text-white text-sm min-w-[50px] text-center">{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom((z) => Math.min(2, z + 0.25))} className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm">+</button>
+          <button onClick={() => setZoom(1)} className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-500 text-xs ml-1">Reset</button>
+        </div>
       </header>
 
-      <div className="flex">
-        <div className="flex-1 p-4 flex justify-center">
+      <div className="relative overflow-auto" style={{ height: "calc(100vh - 56px)" }}>
+        <div className="flex justify-center p-4" style={{ transform: `scale(${zoom})`, transformOrigin: "top center", minHeight: isZoomed ? `${100 / zoom}%` : undefined }}>
           <FootballPitch
             players={players} ball={ball}
             selectedPlayerId={selectedPlayerId} directionMode={directionMode}
             onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
             onPlayerSelect={setSelectedPlayerId}
             onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
+            onBallClaimed={handleBallClaimed}
             aiSuggestions={aiSuggestions} showAISuggestions={showAISuggestions}
           />
         </div>
 
-        <div className="w-80 bg-gray-800 p-4 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-56px)]">
+        {!isZoomed && (
+          <div className="w-80 bg-gray-800 p-4 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-56px)] absolute right-0 top-0">
+            {/* Normal mode panels - same as before */}
           <div className="bg-gray-700 rounded-lg p-3">
             <h3 className="text-white font-bold mb-2">{t("tacticalOptions")}</h3>
             <div className="grid grid-cols-4 gap-1 mb-2">
@@ -224,7 +294,19 @@ export default function TrainingPage() {
 
           <div className="bg-gray-700 rounded-lg p-3">
             <h3 className="text-white font-bold mb-2">{t("actions") || "Actions"}</h3>
-            <button onClick={handleAutoSuggest} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("autoSuggest") || "Auto Suggest"}</button>
+            <div className="mb-2">
+              <label className="text-gray-300 text-sm mb-1 block">{t("playerCount") || "Player Count"}</label>
+              <select
+                value={playerCount}
+                onChange={(e) => setPlayerCount(Number(e.target.value))}
+                className="w-full py-1 px-2 bg-gray-600 text-white rounded text-sm"
+              >
+                {[5, 6, 7, 8, 9, 10, 11].map((n) => (
+                  <option key={n} value={n}>{n}v{n}</option>
+                ))}
+              </select>
+            </div>
+            <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
             <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
             <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear Directions"}</button>
           </div>
@@ -304,6 +386,103 @@ export default function TrainingPage() {
             </div>
           )}
         </div>
+        )}
+
+        {isZoomed && (
+          <>
+            <button onClick={() => setShowTacticalPanel(!showTacticalPanel)} className="fixed bottom-4 left-4 z-50 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300">
+              {t("tacticalOptions") || "Tactical"}
+            </button>
+            <button onClick={() => setShowActionsPanel(!showActionsPanel)} className="fixed bottom-4 left-36 z-50 px-4 py-2 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all duration-300">
+              {t("actions") || "Actions"}
+            </button>
+            {selPlayer && (
+              <button onClick={() => setShowPlayerPanel(!showPlayerPanel)} className="fixed bottom-4 left-64 z-50 px-4 py-2 bg-yellow-600 text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300">
+                #{selPlayer.number}
+              </button>
+            )}
+            <button onClick={() => setShowAIPanel(!showAIPanel)} className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-all duration-300">
+              AI
+            </button>
+
+            <div className={`fixed left-4 bottom-16 z-50 w-72 bg-gray-800 rounded-lg p-4 shadow-2xl transition-all duration-300 ${showTacticalPanel ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-white font-bold">{t("tacticalOptions")}</h3>
+                <button onClick={() => setShowTacticalPanel(false)} className="text-gray-400 hover:text-white">✕</button>
+              </div>
+              <div className="grid grid-cols-4 gap-1 mb-2">
+                {(["current", "suggested", "wrong", "all"] as DirectionMode[]).map((m) => (
+                  <button key={m} onClick={() => setDirectionMode(m)}
+                    className={`py-1.5 rounded text-xs font-semibold transition ${
+                      directionMode === m
+                        ? m === "current" ? "bg-white text-gray-900" : m === "suggested" ? "bg-green-600 text-white" : m === "wrong" ? "bg-red-600 text-white" : "bg-purple-600 text-white"
+                        : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+                    }`}>
+                    {m === "current" ? "Current" : m === "suggested" ? "Suggested" : m === "wrong" ? "Wrong" : "All"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={`fixed left-4 bottom-16 z-50 w-72 bg-gray-800 rounded-lg p-4 shadow-2xl transition-all duration-300 ${showActionsPanel ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-white font-bold">{t("actions") || "Actions"}</h3>
+                <button onClick={() => setShowActionsPanel(false)} className="text-gray-400 hover:text-white">✕</button>
+              </div>
+              <div className="mb-2">
+                <label className="text-gray-300 text-sm mb-1 block">{t("playerCount") || "Player Count"}</label>
+                <select value={playerCount} onChange={(e) => setPlayerCount(Number(e.target.value))} className="w-full py-1 px-2 bg-gray-600 text-white rounded text-sm">
+                  {[5, 6, 7, 8, 9, 10, 11].map((n) => (<option key={n} value={n}>{n}v{n}</option>))}
+                </select>
+              </div>
+              <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
+              <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
+              <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear"}</button>
+            </div>
+
+            {selPlayer && (
+              <div className={`fixed left-4 bottom-16 z-50 w-72 bg-gray-800 rounded-lg p-4 shadow-2xl transition-all duration-300 ${showPlayerPanel ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-white font-bold">#{selPlayer.number} - {selPlayer.position}</h3>
+                  <button onClick={() => setShowPlayerPanel(false)} className="text-gray-400 hover:text-white">✕</button>
+                </div>
+                <div className="text-sm text-gray-300 space-y-1">
+                  <p>{selPlayer.teamId === 1 ? (t("team1") || "Home") : (t("team2") || "Away")}</p>
+                  {selPlayer.isGoalkeeper && <p className="text-yellow-400">{t("goalkeeper") || "Goalkeeper"}</p>}
+                  {ball.holderId === selPlayer.id && <p className="text-orange-400">{t("hasBall") || "Has Ball"}</p>}
+                </div>
+              </div>
+            )}
+
+            <div className={`fixed right-4 bottom-16 z-50 w-72 bg-gray-800 rounded-lg p-4 shadow-2xl transition-all duration-300 ${showAIPanel ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-white font-bold">{t("aiSuggestion") || "AI Suggestion"}</h3>
+                <button onClick={() => setShowAIPanel(false)} className="text-gray-400 hover:text-white">✕</button>
+              </div>
+              {!selectedPlayerId ? (
+                <p className="text-gray-400 text-xs">{t("selectPlayerForAI") || "Select a player"}</p>
+              ) : hasAIAccess === false ? (
+                <p className="text-yellow-400 text-xs">{t("subscriptionRequired") || "Subscription required"}</p>
+              ) : (
+                <>
+                  <button onClick={handleAISuggestion} disabled={aiLoading} className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-2 text-sm disabled:opacity-50">
+                    {aiLoading ? "..." : (t("getAISuggestion") || "Get AI Suggestion")}
+                  </button>
+                  {showAISuggestions && (
+                    <button onClick={handleClearAISuggestions} className="w-full py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 text-xs">
+                      {t("clearAISuggestions") || "Clear"}
+                    </button>
+                  )}
+                </>
+              )}
+              {showAISuggestions && aiExplanation && (
+                <div className="mt-3 bg-purple-900/50 border border-purple-500/30 rounded p-2">
+                  <p className="text-gray-300 text-xs">{aiExplanation}</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
