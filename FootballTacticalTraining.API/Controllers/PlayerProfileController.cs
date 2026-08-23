@@ -1,5 +1,6 @@
 using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Domain.Entities.Auth;
+using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -13,11 +14,15 @@ public class PlayerProfileController : ControllerBase
 {
     private readonly IPlayerProfileService _profileService;
     private readonly IPlayerProgressService _progressService;
+    private readonly IAuditService _auditService;
+    private readonly IEmailService _emailService;
 
-    public PlayerProfileController(IPlayerProfileService profileService, IPlayerProgressService progressService)
+    public PlayerProfileController(IPlayerProfileService profileService, IPlayerProgressService progressService, IAuditService auditService, IEmailService emailService)
     {
         _profileService = profileService;
         _progressService = progressService;
+        _auditService = auditService;
+        _emailService = emailService;
     }
 
     [HttpGet("{id}")]
@@ -50,6 +55,7 @@ public class PlayerProfileController : ControllerBase
         var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         profile.UserId = userId;
         var created = await _profileService.CreateAsync(profile);
+        await _auditService.LogAsync("Create", "PlayerProfile", created.Id.ToString(), newValue: created.PrimaryPosition.ToString(), context: HttpContext);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -57,7 +63,9 @@ public class PlayerProfileController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] PlayerProfile profile)
     {
         profile.Id = id;
-        return Ok(await _profileService.UpdateAsync(profile));
+        var result = await _profileService.UpdateAsync(profile);
+        await _auditService.LogAsync("Update", "PlayerProfile", id.ToString(), newValue: profile.PrimaryPosition.ToString(), context: HttpContext);
+        return Ok(result);
     }
 
     [HttpDelete("{id}")]
@@ -65,6 +73,7 @@ public class PlayerProfileController : ControllerBase
     public async Task<IActionResult> Delete(Guid id)
     {
         await _profileService.DeleteAsync(id);
+        await _auditService.LogAsync("Delete", "PlayerProfile", id.ToString(), context: HttpContext);
         return NoContent();
     }
 
@@ -90,6 +99,8 @@ public class PlayerProfileController : ControllerBase
     [Authorize(Roles = "Coach,Admin,SuperAdmin")]
     public async Task<IActionResult> AwardAchievement(Guid playerId, Guid achievementId, [FromQuery] string? notes = null)
     {
-        return Ok(await _profileService.AwardAchievementAsync(playerId, achievementId, notes));
+        var result = await _profileService.AwardAchievementAsync(playerId, achievementId, notes);
+        await _auditService.LogAsync("AwardAchievement", "PlayerProfile", playerId.ToString(), newValue: achievementId.ToString(), context: HttpContext);
+        return Ok(result);
     }
 }

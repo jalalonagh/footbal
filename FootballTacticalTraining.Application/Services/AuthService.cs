@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using FootballTacticalTraining.Application.Interfaces;
+using FootballTacticalTraining.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -10,10 +12,12 @@ namespace FootballTacticalTraining.Application.Services;
 public class AuthService : IAuthService
 {
     private readonly IConfiguration _configuration;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public AuthService(IConfiguration configuration)
+    public AuthService(IConfiguration configuration, IUnitOfWork unitOfWork)
     {
         _configuration = configuration;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<string> GenerateJwtTokenAsync(Guid userId, string email, string role)
@@ -37,6 +41,50 @@ public class AuthService : IAuthService
             signingCredentials: credentials);
 
         return await Task.FromResult(new JwtSecurityTokenHandler().WriteToken(token));
+    }
+
+    public async Task<string> GenerateRefreshTokenAsync(Guid userId)
+    {
+        var tokenBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(tokenBytes);
+        var refreshToken = Convert.ToBase64String(tokenBytes);
+
+        var entity = new RefreshToken
+        {
+            UserId = userId,
+            Token = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false
+        };
+
+        await _unitOfWork.Repository<RefreshToken>().AddAsync(entity);
+        await _unitOfWork.SaveChangesAsync();
+
+        return refreshToken;
+    }
+
+    public async Task<Guid?> ValidateRefreshTokenAsync(string token)
+    {
+        var tokens = await _unitOfWork.Repository<RefreshToken>()
+            .FindAsync(t => t.Token == token && !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow);
+        var refreshToken = tokens.FirstOrDefault();
+        return refreshToken?.UserId;
+    }
+
+    public async Task RevokeRefreshTokenAsync(string token, string? replacedByToken = null)
+    {
+        var tokens = await _unitOfWork.Repository<RefreshToken>()
+            .FindAsync(t => t.Token == token);
+        var refreshToken = tokens.FirstOrDefault();
+        if (refreshToken != null)
+        {
+            refreshToken.IsRevoked = true;
+            refreshToken.RevokedAt = DateTime.UtcNow;
+            refreshToken.ReplacedByToken = replacedByToken;
+            await _unitOfWork.Repository<RefreshToken>().UpdateAsync(refreshToken);
+            await _unitOfWork.SaveChangesAsync();
+        }
     }
 
     public async Task<string> HashPasswordAsync(string password)

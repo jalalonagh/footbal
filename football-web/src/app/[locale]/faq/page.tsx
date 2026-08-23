@@ -3,14 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-
-interface Faq {
-  id: string;
-  question: string;
-  answer: string;
-  category: string;
-  language: string;
-}
+import { api } from "@/lib/api";
+import type { Faq } from "@/lib/types";
 
 export default function FaqPage() {
   const t = useTranslations("cms");
@@ -21,8 +15,7 @@ export default function FaqPage() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5144/api"}/faqs`)
-      .then((r) => r.json())
+    api.faqs.list()
       .then(setFaqs)
       .catch(() => {})
       .finally(() => setLoading(false));

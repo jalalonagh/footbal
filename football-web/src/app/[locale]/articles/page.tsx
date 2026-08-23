@@ -3,16 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-
-interface Article {
-  id: string;
-  title: string;
-  summary: string;
-  slug: string;
-  coverImageUrl: string;
-  viewCount: number;
-  publishedAt: string;
-}
+import { api } from "@/lib/api";
+import type { Article } from "@/lib/types";
 
 export default function ArticlesPage() {
   const t = useTranslations("cms");
@@ -22,9 +14,8 @@ export default function ArticlesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5144/api"}/articles`)
-      .then((r) => r.json())
-      .then((d) => setArticles(d.items || []))
+    api.articles.list(1, 20)
+      .then((d) => setArticles(d.items))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

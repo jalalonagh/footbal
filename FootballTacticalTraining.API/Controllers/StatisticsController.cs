@@ -1,4 +1,5 @@
 using FootballTacticalTraining.Application.Interfaces;
+using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -11,10 +12,12 @@ namespace FootballTacticalTraining.API.Controllers;
 public class StatisticsController : ControllerBase
 {
     private readonly IStatisticsService _statisticsService;
+    private readonly IAuditService _auditService;
 
-    public StatisticsController(IStatisticsService statisticsService)
+    public StatisticsController(IStatisticsService statisticsService, IAuditService auditService)
     {
         _statisticsService = statisticsService;
+        _auditService = auditService;
     }
 
     [HttpGet("player/{playerId}")]

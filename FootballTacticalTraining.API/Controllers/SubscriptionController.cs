@@ -1,6 +1,9 @@
 using FootballTacticalTraining.Application.DTOs.Subscription;
 using FootballTacticalTraining.Application.Interfaces;
+using FootballTacticalTraining.Domain.Entities;
+using FootballTacticalTraining.Domain.Entities.CMS;
 using FootballTacticalTraining.Domain.Entities.Subscriptions;
+using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -15,12 +18,16 @@ public class SubscriptionController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPaymentGateway _paymentGateway;
     private readonly ISubscriptionService _subscriptionService;
+    private readonly IAuditService _auditService;
+    private readonly IEmailService _emailService;
 
-    public SubscriptionController(IUnitOfWork unitOfWork, IPaymentGateway paymentGateway, ISubscriptionService subscriptionService)
+    public SubscriptionController(IUnitOfWork unitOfWork, IPaymentGateway paymentGateway, ISubscriptionService subscriptionService, IAuditService auditService, IEmailService emailService)
     {
         _unitOfWork = unitOfWork;
         _paymentGateway = paymentGateway;
         _subscriptionService = subscriptionService;
+        _auditService = auditService;
+        _emailService = emailService;
     }
 
     [HttpGet("plans")]
@@ -50,6 +57,29 @@ public class SubscriptionController : ControllerBase
 
         var amount = plan.DiscountPrice ?? plan.Price;
 
+        // Apply coupon if provided
+        if (!string.IsNullOrEmpty(dto.CouponCode))
+        {
+            var coupons = await _unitOfWork.Repository<Coupon>()
+                .FindAsync(c => c.Code == dto.CouponCode && c.IsActive && c.EndDate > DateTime.UtcNow && c.CurrentUses < (c.MaxUses ?? int.MaxValue));
+            var coupon = coupons.FirstOrDefault();
+            if (coupon == null) return BadRequest("Invalid or expired coupon code");
+
+            var discounts = await _unitOfWork.Repository<Discount>().FindAsync(d => d.Id == coupon.DiscountId);
+            var discount = discounts.FirstOrDefault();
+
+            if (discount != null)
+            {
+                if (discount.Percentage.HasValue)
+                    amount = amount - (amount * discount.Percentage.Value / 100);
+                else if (discount.FixedAmount.HasValue)
+                    amount = Math.Max(0, amount - discount.FixedAmount.Value);
+            }
+
+            coupon.CurrentUses++;
+            await _unitOfWork.Repository<Coupon>().UpdateAsync(coupon);
+        }
+
         if (amount == 0)
         {
             var freeSubscription = new Subscription
@@ -63,6 +93,7 @@ public class SubscriptionController : ControllerBase
             await _unitOfWork.Repository<Subscription>().AddAsync(freeSubscription);
             await _unitOfWork.SaveChangesAsync();
             await ProvisionEntitlementsAsync(userId, plan.Id, freeSubscription.Id);
+            await _auditService.LogAsync("Create", "Subscription", freeSubscription.Id.ToString(), newValue: plan.Name, context: HttpContext);
             return Ok(new { paymentId = (Guid?)null, redirectUrl = "/payment/success" });
         }
 
@@ -82,6 +113,7 @@ public class SubscriptionController : ControllerBase
 
         await _unitOfWork.Repository<PaymentEntity>().AddAsync(payment);
         await _unitOfWork.SaveChangesAsync();
+        await _auditService.LogAsync("CreatePayment", "Payment", payment.Id.ToString(), newValue: amount.ToString(), context: HttpContext);
 
         return Ok(new { payment.Id, RedirectUrl = result.RedirectUrl });
     }
@@ -107,6 +139,7 @@ public class SubscriptionController : ControllerBase
             payment.Status = Domain.Enums.PaymentStatus.Failed;
             await _unitOfWork.Repository<PaymentEntity>().UpdateAsync(payment);
             await _unitOfWork.SaveChangesAsync();
+            await _auditService.LogAsync("PaymentFailed", "Payment", payment.Id.ToString(), context: HttpContext);
             return BadRequest("Verification failed");
         }
 
@@ -130,6 +163,7 @@ public class SubscriptionController : ControllerBase
         await _unitOfWork.SaveChangesAsync();
 
         await ProvisionEntitlementsAsync(payment.UserId, payment.PlanId!.Value, subscription.Id);
+        await _auditService.LogAsync("PaymentCompleted", "Payment", payment.Id.ToString(), newValue: plan.Name, context: HttpContext);
 
         return Redirect("/payment/success");
     }

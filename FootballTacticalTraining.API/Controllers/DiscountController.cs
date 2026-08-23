@@ -1,5 +1,6 @@
 using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Domain.Entities.CMS;
+using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,12 @@ namespace FootballTacticalTraining.API.Controllers;
 public class DiscountController : ControllerBase
 {
     private readonly IDiscountService _discountService;
+    private readonly IAuditService _auditService;
 
-    public DiscountController(IDiscountService discountService)
+    public DiscountController(IDiscountService discountService, IAuditService auditService)
     {
         _discountService = discountService;
+        _auditService = auditService;
     }
 
     [HttpGet("discounts")]
@@ -34,7 +37,9 @@ public class DiscountController : ControllerBase
     [HttpPost("discounts")]
     public async Task<IActionResult> CreateDiscount([FromBody] Discount discount)
     {
-        return Ok(await _discountService.CreateAsync(discount));
+        var result = await _discountService.CreateAsync(discount);
+        await _auditService.LogAsync("Create", "Discount", result.Id.ToString(), newValue: result.Code, context: HttpContext);
+        return Ok(result);
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]
@@ -42,7 +47,9 @@ public class DiscountController : ControllerBase
     public async Task<IActionResult> UpdateDiscount(Guid id, [FromBody] Discount discount)
     {
         discount.Id = id;
-        return Ok(await _discountService.UpdateAsync(discount));
+        var result = await _discountService.UpdateAsync(discount);
+        await _auditService.LogAsync("Update", "Discount", id.ToString(), newValue: discount.Code, context: HttpContext);
+        return Ok(result);
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]
@@ -50,6 +57,7 @@ public class DiscountController : ControllerBase
     public async Task<IActionResult> DeleteDiscount(Guid id)
     {
         await _discountService.DeleteAsync(id);
+        await _auditService.LogAsync("Delete", "Discount", id.ToString(), context: HttpContext);
         return NoContent();
     }
 
@@ -63,7 +71,9 @@ public class DiscountController : ControllerBase
     [HttpPost("coupons")]
     public async Task<IActionResult> CreateCoupon([FromBody] Coupon coupon)
     {
-        return Ok(await _discountService.CreateCouponAsync(coupon));
+        var result = await _discountService.CreateCouponAsync(coupon);
+        await _auditService.LogAsync("Create", "Coupon", result.Id.ToString(), newValue: result.Code, context: HttpContext);
+        return Ok(result);
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]
@@ -71,7 +81,9 @@ public class DiscountController : ControllerBase
     public async Task<IActionResult> UpdateCoupon(Guid id, [FromBody] Coupon coupon)
     {
         coupon.Id = id;
-        return Ok(await _discountService.UpdateCouponAsync(coupon));
+        var result = await _discountService.UpdateCouponAsync(coupon);
+        await _auditService.LogAsync("Update", "Coupon", id.ToString(), newValue: coupon.Code, context: HttpContext);
+        return Ok(result);
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]
@@ -79,6 +91,7 @@ public class DiscountController : ControllerBase
     public async Task<IActionResult> DeleteCoupon(Guid id)
     {
         await _discountService.DeleteCouponAsync(id);
+        await _auditService.LogAsync("Delete", "Coupon", id.ToString(), context: HttpContext);
         return NoContent();
     }
 

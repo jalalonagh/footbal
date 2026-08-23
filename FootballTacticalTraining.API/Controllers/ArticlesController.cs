@@ -1,5 +1,6 @@
 using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Domain.Entities.CMS;
+using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,8 +11,13 @@ namespace FootballTacticalTraining.API.Controllers;
 public class ArticlesController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditService _auditService;
 
-    public ArticlesController(IUnitOfWork unitOfWork) { _unitOfWork = unitOfWork; }
+    public ArticlesController(IUnitOfWork unitOfWork, IAuditService auditService)
+    {
+        _unitOfWork = unitOfWork;
+        _auditService = auditService;
+    }
 
     [HttpGet]
     [AllowAnonymous]
@@ -47,6 +53,7 @@ public class ArticlesController : ControllerBase
         article.IsPublished = false;
         await _unitOfWork.Repository<Article>().AddAsync(article);
         await _unitOfWork.SaveChangesAsync();
+        await _auditService.LogAsync("Create", "Article", article.Id.ToString(), newValue: article.Title, context: HttpContext);
         return CreatedAtAction(nameof(GetBySlug), new { slug = article.Slug }, article);
     }
 
@@ -60,6 +67,36 @@ public class ArticlesController : ControllerBase
         article.IsPublished = true;
         article.PublishedAt = DateTime.UtcNow;
         await _unitOfWork.Repository<Article>().UpdateAsync(article);
+        await _unitOfWork.SaveChangesAsync();
+        await _auditService.LogAsync("Publish", "Article", article.Id.ToString(), newValue: article.Title, context: HttpContext);
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Coach,Admin,SuperAdmin")]
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] Article updated)
+    {
+        var articles = await _unitOfWork.Repository<Article>().FindAsync(a => a.Id == id);
+        var article = articles.FirstOrDefault();
+        if (article == null) return NotFound();
+        article.Title = updated.Title;
+        article.Content = updated.Content;
+        article.Summary = updated.Summary;
+        article.Slug = updated.Slug;
+        article.CoverImageUrl = updated.CoverImageUrl;
+        await _unitOfWork.Repository<Article>().UpdateAsync(article);
+        await _unitOfWork.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var articles = await _unitOfWork.Repository<Article>().FindAsync(a => a.Id == id);
+        var article = articles.FirstOrDefault();
+        if (article == null) return NotFound();
+        await _unitOfWork.Repository<Article>().DeleteAsync(article);
         await _unitOfWork.SaveChangesAsync();
         return NoContent();
     }

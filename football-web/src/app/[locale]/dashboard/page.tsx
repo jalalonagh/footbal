@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 export default function DashboardPage() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [subscription, setSubscription] = useState<{ planName: string; expiresAt: string } | null>(null);
+  const [subscription, setSubscription] = useState<{ planName: string; endDate: string } | null>(null);
   const [scenarioCount, setScenarioCount] = useState(0);
 
   useEffect(() => {
@@ -39,8 +39,8 @@ export default function DashboardPage() {
           <div className="bg-gray-800 rounded-xl p-6">
             <div className="text-gray-400 text-sm mb-1">Subscription</div>
             <div className="text-2xl font-bold text-green-400">{subscription?.planName || "Free"}</div>
-            {subscription?.expiresAt && (
-              <div className="text-gray-500 text-xs mt-1">Expires: {new Date(subscription.expiresAt).toLocaleDateString()}</div>
+            {subscription?.endDate && (
+              <div className="text-gray-500 text-xs mt-1">Expires: {new Date(subscription.endDate).toLocaleDateString()}</div>
             )}
           </div>
           <div className="bg-gray-800 rounded-xl p-6">

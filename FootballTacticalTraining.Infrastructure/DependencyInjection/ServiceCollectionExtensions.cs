@@ -24,6 +24,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<IScenarioService, ScenarioService>();
+        services.AddScoped<IScenarioPlayerService, ScenarioPlayerService>();
+        services.AddScoped<IScenarioSolutionService, ScenarioSolutionService>();
+        services.AddScoped<IScenarioRuleService, ScenarioRuleService>();
         services.AddScoped<ITacticalEngine, TacticalEngine>();
         services.AddScoped<IEvaluationEngine, EvaluationEngine>();
         services.AddScoped<ISimulationEngine, SimulationEngine>();
@@ -41,6 +44,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAcademyService, AcademyService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IEmailService, EmailService>();
+        services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.AddScoped<IDiscountService, DiscountService>();
 
         services.AddStackExchangeRedisCache(options =>

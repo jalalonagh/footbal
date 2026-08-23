@@ -1,3 +1,3 @@
 namespace FootballTacticalTraining.Application.DTOs.Subscription;
 
-public record CreatePaymentDto(Guid PlanId, string CallbackUrl);
+public record CreatePaymentDto(Guid PlanId, string CallbackUrl, string? CouponCode);

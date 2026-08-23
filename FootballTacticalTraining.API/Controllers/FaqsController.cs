@@ -1,5 +1,6 @@
 using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Domain.Entities.CMS;
+using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,8 +11,13 @@ namespace FootballTacticalTraining.API.Controllers;
 public class FaqsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditService _auditService;
 
-    public FaqsController(IUnitOfWork unitOfWork) { _unitOfWork = unitOfWork; }
+    public FaqsController(IUnitOfWork unitOfWork, IAuditService auditService)
+    {
+        _unitOfWork = unitOfWork;
+        _auditService = auditService;
+    }
 
     [HttpGet]
     [AllowAnonymous]
@@ -31,6 +37,7 @@ public class FaqsController : ControllerBase
         faq.CreatedAt = DateTime.UtcNow;
         await _unitOfWork.Repository<Faq>().AddAsync(faq);
         await _unitOfWork.SaveChangesAsync();
+        await _auditService.LogAsync("Create", "Faq", faq.Id.ToString(), newValue: faq.Question, context: HttpContext);
         return CreatedAtAction(nameof(GetFaqs), new { }, faq);
     }
 
@@ -47,6 +54,18 @@ public class FaqsController : ControllerBase
         existing.IsActive = faq.IsActive;
         existing.DisplayOrder = faq.DisplayOrder;
         await _unitOfWork.Repository<Faq>().UpdateAsync(existing);
+        await _unitOfWork.SaveChangesAsync();
+        await _auditService.LogAsync("Update", "Faq", id.ToString(), newValue: faq.Question, context: HttpContext);
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var existing = await _unitOfWork.Repository<Faq>().GetByIdAsync(id);
+        if (existing == null) return NotFound();
+        await _unitOfWork.Repository<Faq>().DeleteAsync(existing);
         await _unitOfWork.SaveChangesAsync();
         return NoContent();
     }

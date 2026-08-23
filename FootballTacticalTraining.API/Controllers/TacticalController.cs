@@ -1,5 +1,6 @@
 using FootballTacticalTraining.Application.DTOs.Tactical;
 using FootballTacticalTraining.Application.Interfaces;
+using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -13,12 +14,16 @@ public class TacticalController : ControllerBase
     private readonly ITacticalEngine _tacticalEngine;
     private readonly IEvaluationEngine _evaluationEngine;
     private readonly ISubscriptionService _subscriptionService;
+    private readonly IAuditService _auditService;
+    private readonly IEmailService _emailService;
 
-    public TacticalController(ITacticalEngine tacticalEngine, IEvaluationEngine evaluationEngine, ISubscriptionService subscriptionService)
+    public TacticalController(ITacticalEngine tacticalEngine, IEvaluationEngine evaluationEngine, ISubscriptionService subscriptionService, IAuditService auditService, IEmailService emailService)
     {
         _tacticalEngine = tacticalEngine;
         _evaluationEngine = evaluationEngine;
         _subscriptionService = subscriptionService;
+        _auditService = auditService;
+        _emailService = emailService;
     }
 
     [HttpPost("analyze")]
@@ -26,6 +31,7 @@ public class TacticalController : ControllerBase
     public async Task<ActionResult<TacticalAnalysis>> Analyze([FromBody] GameState gameState)
     {
         var analysis = await _tacticalEngine.AnalyzeSituationAsync(gameState);
+        await _auditService.LogAsync("Analyze", "Tactical", gameState.BallX.ToString(), newValue: analysis.DefensiveLineHeight, context: HttpContext);
         return Ok(analysis);
     }
 
@@ -53,7 +59,7 @@ public class TacticalController : ControllerBase
 
         var result = await _evaluationEngine.EvaluateDecisionAsync(input);
 
-        return Ok(new TacticalSimulationResponseDto
+        var response = new TacticalSimulationResponseDto
         {
             OverallScore = result.OverallScore,
             MistakeType = result.MistakeType,
@@ -61,7 +67,11 @@ public class TacticalController : ControllerBase
             BestAlternative = result.BestAlternative,
             OptimalX = input.OptimalX,
             OptimalY = input.OptimalY
-        });
+        };
+
+        await _auditService.LogAsync("Evaluate", "Tactical", dto.ActionType, newValue: result.OverallScore.ToString(), context: HttpContext);
+
+        return Ok(response);
     }
 
     [HttpPost("recommendations")]
@@ -71,6 +81,7 @@ public class TacticalController : ControllerBase
         [FromQuery] Guid playerId)
     {
         var recommendations = await _tacticalEngine.GetAllPossibleActionsAsync(gameState, playerId);
+        await _auditService.LogAsync("GetRecommendations", "Tactical", playerId.ToString(), newValue: gameState.BallX.ToString(), context: HttpContext);
         return Ok(recommendations);
     }
 }

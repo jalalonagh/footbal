@@ -4,18 +4,17 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import type { Scenario } from "@/lib/types";
 
 export default function HomePage() {
   const t = useTranslations("home");
   const nav = useTranslations("nav");
   const router = useRouter();
-  const [scenarios, setScenarios] = useState<any[]>([]);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5144/api"}/scenarios?page=1&pageSize=6`)
-      .then((r) => r.json())
-      .then((d) => setScenarios(d.items || []))
-      .catch(() => {});
+    api.scenarios.list({ page: 1, pageSize: 6 }).then((r) => setScenarios(r.items)).catch(() => {});
   }, []);
 
   return (
