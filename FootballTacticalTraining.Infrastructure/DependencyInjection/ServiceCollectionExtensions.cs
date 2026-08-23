@@ -3,6 +3,7 @@ using FootballTacticalTraining.Application.Services;
 using FootballTacticalTraining.Infrastructure.Audit;
 using FootballTacticalTraining.Infrastructure.Data;
 using FootballTacticalTraining.Infrastructure.Payment;
+using FootballTacticalTraining.Infrastructure.Services;
 using FootballTacticalTraining.Infrastructure.Tactical;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +32,16 @@ public static class ServiceCollectionExtensions
         services.Configure<ZarinPalSettings>(configuration.GetSection("ZarinPal"));
 
         services.AddScoped<IAuditService, AuditService>();
+
+        services.AddScoped<ITrainingSessionService, TrainingSessionService>();
+        services.AddScoped<ITrainingPlanService, TrainingPlanService>();
+        services.AddScoped<IPlayerProgressService, PlayerProgressService>();
+        services.AddScoped<IPlayerProfileService, PlayerProfileService>();
+        services.AddScoped<ITeamService, TeamService>();
+        services.AddScoped<IAcademyService, AcademyService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IDiscountService, DiscountService>();
 
         services.AddStackExchangeRedisCache(options =>
         {

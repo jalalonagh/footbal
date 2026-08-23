@@ -91,4 +91,74 @@ public class AuthController : ControllerBase
         }
         return NoContent();
     }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var users = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == request.Email);
+        var user = users.FirstOrDefault();
+        if (user == null) return Ok(new { message = "If the email exists, a reset link has been sent." });
+
+        var resetToken = Guid.NewGuid().ToString("N");
+        user.PasswordResetToken = resetToken;
+        user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+        await _unitOfWork.Repository<User>().UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { message = "If the email exists, a reset link has been sent." });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var users = await _unitOfWork.Repository<User>()
+            .FindAsync(u => u.PasswordResetToken == request.Token && u.Email == request.Email);
+        var user = users.FirstOrDefault();
+        if (user == null || user.PasswordResetTokenExpiry == null || user.PasswordResetTokenExpiry < DateTime.UtcNow)
+            return BadRequest("Invalid or expired reset token");
+
+        user.PasswordHash = await _authService.HashPasswordAsync(request.NewPassword);
+        user.PasswordResetToken = null;
+        user.PasswordResetTokenExpiry = null;
+        await _unitOfWork.Repository<User>().UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { message = "Password reset successfully" });
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentUser()
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+        if (user == null) return NotFound();
+        return Ok(new
+        {
+            user.Id, user.Email, user.FirstName, user.LastName,
+            Role = user.Role.ToString(), user.IsActive, user.CreatedAt
+        });
+    }
+
+    [Authorize]
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+        if (user == null) return NotFound();
+
+        if (!string.IsNullOrEmpty(request.FirstName)) user.FirstName = request.FirstName;
+        if (!string.IsNullOrEmpty(request.LastName)) user.LastName = request.LastName;
+        if (!string.IsNullOrEmpty(request.PhoneNumber)) user.PhoneNumber = request.PhoneNumber;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.Repository<User>().UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        return Ok(new { user.Id, user.Email, user.FirstName, user.LastName, user.PhoneNumber });
+    }
 }
+
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Email, string Token, string NewPassword);
+public record UpdateProfileRequest(string? FirstName, string? LastName, string? PhoneNumber);

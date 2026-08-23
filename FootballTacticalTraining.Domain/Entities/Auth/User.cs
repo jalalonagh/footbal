@@ -16,6 +16,8 @@ public class User : BaseEntity
     public bool EmailConfirmed { get; set; }
     public DateTime? LastLoginAt { get; set; }
     public string? PreferredLanguage { get; set; } = "en";
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpiry { get; set; }
 
     public PlayerProfile? PlayerProfile { get; set; }
     public CoachProfile? CoachProfile { get; set; }
