@@ -89,6 +89,14 @@ public class AuthController : ControllerBase
         return Ok(new { items = list, total = users.Count() });
     }
 
+    [Authorize]
+    [HttpGet("debug-claims")]
+    public IActionResult DebugClaims()
+    {
+        var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+        return Ok(claims);
+    }
+
     [Authorize(Roles = "SuperAdmin")]
     [HttpPut("users/{id}/role")]
     public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] string role)
