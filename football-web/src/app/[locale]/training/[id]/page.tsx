@@ -115,14 +115,25 @@ export default function TrainingPage() {
     }
   }, [ball.holderId]);
 
-  const handleBallMove = useCallback((x: number, y: number) => {
-    setBall((b) => ({ ...b, x, y, holderId: null }));
-    setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: false })));
+  const handleBallMove = useCallback((x: number, y: number, clearHolder = true) => {
+    setBall((b) => ({ ...b, x, y, holderId: clearHolder ? null : b.holderId }));
+    if (clearHolder) {
+      setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: false })));
+    }
   }, []);
 
   const handleBallClaimed = useCallback((playerId: string) => {
     setBall((b) => ({ ...b, holderId: playerId }));
     setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: p.id === playerId })));
+  }, []);
+
+  const handlePass = useCallback((fromPlayerId: string, toPlayerId: string) => {
+    setBall((b) => ({ ...b, holderId: toPlayerId }));
+    setPlayers((prev) => prev.map((p) => {
+      if (p.id === fromPlayerId) return { ...p, hasBall: false };
+      if (p.id === toPlayerId) return { ...p, hasBall: true };
+      return p;
+    }));
   }, []);
 
   const handleResetPositions = useCallback(() => {
@@ -160,6 +171,23 @@ export default function TrainingPage() {
       if (directionMode === "current") return { ...b, direction: { x: dx, y: dy } };
       if (directionMode === "suggested") return { ...b, suggestedDirection: { x: dx, y: dy } };
       return { ...b, wrongDirection: { x: dx, y: dy } };
+    });
+  }, [directionMode]);
+
+  const handleClearPlayerDirection = useCallback((playerId: string) => {
+    setPlayers((prev) => prev.map((p) => {
+      if (p.id !== playerId) return p;
+      if (directionMode === "current") return { ...p, direction: null };
+      if (directionMode === "suggested") return { ...p, suggestedDirection: null };
+      return { ...p, wrongDirection: null };
+    }));
+  }, [directionMode]);
+
+  const handleClearBallDirection = useCallback(() => {
+    setBall((b) => {
+      if (directionMode === "current") return { ...b, direction: null };
+      if (directionMode === "suggested") return { ...b, suggestedDirection: null };
+      return { ...b, wrongDirection: null };
     });
   }, [directionMode]);
 
@@ -262,7 +290,7 @@ export default function TrainingPage() {
             onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
             onPlayerSelect={setSelectedPlayerId}
             onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
-            onBallClaimed={handleBallClaimed}
+            onBallClaimed={handleBallClaimed} onPass={handlePass}
             aiSuggestions={aiSuggestions} showAISuggestions={showAISuggestions}
           />
         </div>
@@ -320,6 +348,26 @@ export default function TrainingPage() {
                 {selPlayer.isGoalkeeper && <p className="text-yellow-400">{t("goalkeeper") || "Goalkeeper"}</p>}
                 {ball.holderId === selPlayer.id && <p className="text-orange-400">{t("hasBall") || "Has Ball"}</p>}
                 <p className="text-xs text-gray-400">{t("dblClickSetDir") || "Double-click to set direction"}</p>
+              </div>
+              <div className="mt-3 space-y-1">
+                {selPlayer.direction && (
+                  <button onClick={() => handleClearPlayerDirection(selPlayer.id)}
+                    className="w-full py-1.5 bg-white/10 text-white rounded text-xs hover:bg-white/20">
+                    {t("clearCurrent") || "Clear Current Direction"}
+                  </button>
+                )}
+                {selPlayer.suggestedDirection && (
+                  <button onClick={() => handleClearPlayerDirection(selPlayer.id)}
+                    className="w-full py-1.5 bg-green-600/30 text-green-300 rounded text-xs hover:bg-green-600/50">
+                    {t("clearSuggested") || "Clear Suggested Direction"}
+                  </button>
+                )}
+                {selPlayer.wrongDirection && (
+                  <button onClick={() => handleClearPlayerDirection(selPlayer.id)}
+                    className="w-full py-1.5 bg-red-600/30 text-red-300 rounded text-xs hover:bg-red-600/50">
+                    {t("clearWrong") || "Clear Wrong Direction"}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -450,6 +498,26 @@ export default function TrainingPage() {
                   <p>{selPlayer.teamId === 1 ? (t("team1") || "Home") : (t("team2") || "Away")}</p>
                   {selPlayer.isGoalkeeper && <p className="text-yellow-400">{t("goalkeeper") || "Goalkeeper"}</p>}
                   {ball.holderId === selPlayer.id && <p className="text-orange-400">{t("hasBall") || "Has Ball"}</p>}
+                </div>
+                <div className="mt-3 space-y-1">
+                  {selPlayer.direction && (
+                    <button onClick={() => handleClearPlayerDirection(selPlayer.id)}
+                      className="w-full py-1.5 bg-white/10 text-white rounded text-xs hover:bg-white/20">
+                      {t("clearCurrent") || "Clear Current"}
+                    </button>
+                  )}
+                  {selPlayer.suggestedDirection && (
+                    <button onClick={() => handleClearPlayerDirection(selPlayer.id)}
+                      className="w-full py-1.5 bg-green-600/30 text-green-300 rounded text-xs hover:bg-green-600/50">
+                      {t("clearSuggested") || "Clear Suggested"}
+                    </button>
+                  )}
+                  {selPlayer.wrongDirection && (
+                    <button onClick={() => handleClearPlayerDirection(selPlayer.id)}
+                      className="w-full py-1.5 bg-red-600/30 text-red-300 rounded text-xs hover:bg-red-600/50">
+                      {t("clearWrong") || "Clear Wrong"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}

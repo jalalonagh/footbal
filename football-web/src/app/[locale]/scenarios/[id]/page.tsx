@@ -68,16 +68,30 @@ export default function ScenarioDetailPage() {
 
   const handlePlayerMove = useCallback((playerId: string, x: number, y: number) => {
     setPlayers((prev) => prev.map((p) => p.id === playerId ? { ...p, x, y } : p));
-  }, []);
+    if (ball.holderId === playerId) {
+      setBall((b) => ({ ...b, x, y }));
+    }
+  }, [ball.holderId]);
 
-  const handleBallMove = useCallback((x: number, y: number) => {
-    setBall((b) => ({ ...b, x, y, holderId: null }));
-    setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: false })));
+  const handleBallMove = useCallback((x: number, y: number, clearHolder = true) => {
+    setBall((b) => ({ ...b, x, y, holderId: clearHolder ? null : b.holderId }));
+    if (clearHolder) {
+      setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: false })));
+    }
   }, []);
 
   const handleBallClaimed = useCallback((playerId: string) => {
     setBall((b) => ({ ...b, holderId: playerId }));
     setPlayers((prev) => prev.map((p) => ({ ...p, hasBall: p.id === playerId })));
+  }, []);
+
+  const handlePass = useCallback((fromPlayerId: string, toPlayerId: string) => {
+    setBall((b) => ({ ...b, holderId: toPlayerId }));
+    setPlayers((prev) => prev.map((p) => {
+      if (p.id === fromPlayerId) return { ...p, hasBall: false };
+      if (p.id === toPlayerId) return { ...p, hasBall: true };
+      return p;
+    }));
   }, []);
 
   const handleDirectionSet = useCallback((playerId: string, dx: number, dy: number) => {
@@ -194,7 +208,7 @@ export default function ScenarioDetailPage() {
             onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
             onPlayerSelect={setSelectedPlayerId}
             onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
-            onBallClaimed={handleBallClaimed}
+            onBallClaimed={handleBallClaimed} onPass={handlePass}
             aiSuggestions={aiSuggestions} showAISuggestions={showAISuggestions}
           />
         </div>

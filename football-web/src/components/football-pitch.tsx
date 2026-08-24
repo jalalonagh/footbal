@@ -43,11 +43,12 @@ interface FootballPitchProps {
   selectedPlayerId: string | null;
   directionMode: DirectionMode;
   onPlayerMove?: (playerId: string, x: number, y: number) => void;
-  onBallMove?: (x: number, y: number) => void;
+  onBallMove?: (x: number, y: number, clearHolder?: boolean) => void;
   onPlayerSelect?: (playerId: string | null) => void;
   onDirectionSet?: (playerId: string, dx: number, dy: number) => void;
   onBallDirectionSet?: (dx: number, dy: number) => void;
   onBallClaimed?: (playerId: string) => void;
+  onPass?: (fromPlayerId: string, toPlayerId: string) => void;
   disabled?: boolean;
   width?: number;
   height?: number;
@@ -59,7 +60,7 @@ const DIR_LEN = 18;
 
 export default function FootballPitch({
   players, ball, selectedPlayerId, directionMode,
-  onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet, onBallClaimed,
+  onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet, onBallClaimed, onPass,
   disabled = false, width = 800, height = 520,
   aiSuggestions = [], showAISuggestions = false,
 }: FootballPitchProps) {
@@ -68,6 +69,8 @@ export default function FootballPitch({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const didDrag = useRef(false);
   const clickTimer = useRef<NodeJS.Timeout | null>(null);
+  const [passTarget, setPassTarget] = useState<string | null>(null);
+  const [isPassing, setIsPassing] = useState(false);
 
   const toSvgX = (x: number) => (x / 100) * width;
   const toSvgY = (y: number) => (y / 100) * height;
@@ -88,14 +91,22 @@ export default function FootballPitch({
     e.stopPropagation();
     e.preventDefault();
     didDrag.current = false;
+
+    const clickedPlayer = players.find((p) => p.id === playerId);
+    const holderPlayer = players.find((p) => p.hasBall);
+
+    if (holderPlayer && holderPlayer.id !== playerId && !isPassing) {
+      onPass?.(holderPlayer.id, playerId);
+      return;
+    }
+
     const pos = getMousePos(e);
-    const player = players.find((p) => p.id === playerId);
-    if (player) {
+    if (clickedPlayer) {
       onPlayerSelect?.(playerId === selectedPlayerId ? null : playerId);
       setDragging(playerId);
-      setDragOffset({ x: pos.x - player.x, y: pos.y - player.y });
+      setDragOffset({ x: pos.x - clickedPlayer.x, y: pos.y - clickedPlayer.y });
     }
-  }, [disabled, directionMode, getMousePos, players, selectedPlayerId, onPlayerSelect]);
+  }, [disabled, directionMode, getMousePos, players, selectedPlayerId, onPlayerSelect, onPass, isPassing]);
 
   const handleBallMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled || directionMode === "all") return;
@@ -117,7 +128,7 @@ export default function FootballPitch({
     } else {
       onPlayerMove?.(dragging, nx, ny);
       if (ball.holderId === dragging) {
-        onBallMove?.(nx, ny);
+        onBallMove?.(nx, ny, false);
       }
     }
   }, [dragging, dragOffset, getMousePos, onPlayerMove, onBallMove, ball.holderId]);
@@ -198,9 +209,9 @@ export default function FootballPitch({
       className="rounded-lg shadow-lg cursor-crosshair select-none"
       onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onClick={handlePitchClick} onTouchEnd={handleMouseUp}>
       <defs>
-        <pattern id="grass" patternUnits="userSpaceOnUse" width="30" height="30">
-          <rect width="30" height="30" fill="#2d8a4e" />
-          <rect width="15" height="30" fill="#34a853" />
+        <pattern id="grass" patternUnits="userSpaceOnUse" width="45" height="45">
+          <rect width="45" height="45" fill="#2d8a4e" />
+          <rect width="22" height="45" fill="#34a853" />
         </pattern>
         <filter id="glow"><feGaussianBlur stdDeviation="2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         <filter id="selGlow"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -221,6 +232,21 @@ export default function FootballPitch({
       <path d={`M ${width - 15} 2 A 15 15 0 0 1 ${width - 2} 15`} fill="none" stroke="white" strokeWidth="2" />
       <path d={`M 2 ${height - 15} A 15 15 0 0 0 15 ${height - 2}`} fill="none" stroke="white" strokeWidth="2" />
       <path d={`M ${width - 15} ${height - 2} A 15 15 0 0 0 ${width - 2} ${height - 15}`} fill="none" stroke="white" strokeWidth="2" />
+
+      {players.filter((p) => p.hasBall).map((holder) => {
+        const target = players.find((p) => p.id === passTarget);
+        if (!target) return null;
+        return (
+          <g key={`pass-${holder.id}-${target.id}`}>
+            <line
+              x1={toSvgX(holder.x)} y1={toSvgY(holder.y)}
+              x2={toSvgX(target.x)} y2={toSvgY(target.y)}
+              stroke="#fbbf24" strokeWidth="3" strokeDasharray="8,4" opacity="0.8"
+            />
+            <circle cx={toSvgX(target.x)} cy={toSvgY(target.y)} r="20" fill="none" stroke="#fbbf24" strokeWidth="2" opacity="0.6" />
+          </g>
+        );
+      })}
 
       {players.map((p) => {
         if (directionMode === "all") {
@@ -264,16 +290,20 @@ export default function FootballPitch({
         const sel = p.id === selectedPlayerId;
         const gk = p.isGoalkeeper;
         const fill = p.teamId === 1 ? (gk ? "#f59e0b" : "#3b82f6") : (gk ? "#dc2626" : "#ef4444");
+        const holder = players.find((pl) => pl.hasBall);
+        const canReceivePass = holder && holder.id !== p.id;
         return (
           <g key={p.id} transform={`translate(${toSvgX(p.x)}, ${toSvgY(p.y)})`}
             onMouseDown={(e) => handlePlayerMouseDown(p.id, e)}
+            onMouseEnter={() => canReceivePass && setPassTarget(p.id)}
+            onMouseLeave={() => setPassTarget(null)}
             className={disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing"}
             filter={sel ? "url(#selGlow)" : undefined}>
             {sel && <rect x="-16" y="-24" width="32" height="6" rx="3" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />}
             <circle r="14" fill={fill} stroke={sel ? "#eab308" : "white"} strokeWidth={sel ? 3 : 2} />
             {gk && <><line x1="-6" y1="-6" x2="6" y2="6" stroke="white" strokeWidth="2" /><line x1="6" y1="-6" x2="-6" y2="6" stroke="white" strokeWidth="2" /></>}
-            <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="10" fontWeight="bold">{p.number}</text>
-            <text textAnchor="middle" y="22" fill="white" fontSize="7" opacity="0.8">{p.position}</text>
+            <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="13" fontWeight="bold">{p.number}</text>
+            <text textAnchor="middle" y="22" fill="white" fontSize="8" opacity="0.8">{p.position}</text>
             {ball.holderId === p.id && <circle r="6" cx="12" cy="-12" fill="white" stroke="#333" strokeWidth="1.5" />}
           </g>
         );

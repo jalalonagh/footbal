@@ -192,7 +192,7 @@ export default function AdminScenariosPage() {
                   ) : (
                     <>
                       <button onClick={() => setEditMode(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">Edit</button>
-                      <Link href={`/training/${selected.id}`} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">Open in Trainer</Link>
+                      <Link href={`/admin/scenarios/${selected.id}/edit`} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">Edit in Simulator</Link>
                       <button onClick={() => togglePublish(selected)}
                         className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
                           selected.status === "Published" ? "bg-yellow-600 hover:bg-yellow-700 text-white" : "bg-green-600 hover:bg-green-700 text-white"
