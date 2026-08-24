@@ -45,6 +45,7 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<ArticleTag> ArticleTags => Set<ArticleTag>();
+    public DbSet<ArticleTranslation> ArticleTranslations => Set<ArticleTranslation>();
     public DbSet<Faq> Faqs => Set<Faq>();
     public DbSet<Discount> Discounts => Set<Discount>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
@@ -104,6 +105,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ArticleTag>(e =>
         {
             e.HasKey(at => new { at.ArticleId, at.TagId });
+        });
+
+        modelBuilder.Entity<ArticleTranslation>(e =>
+        {
+            e.HasKey(at => new { at.ArticleId, at.Language });
+            e.HasOne(at => at.Article).WithMany(a => a.Translations).HasForeignKey(at => at.ArticleId);
         });
 
         modelBuilder.Entity<TeamPlayer>(e =>

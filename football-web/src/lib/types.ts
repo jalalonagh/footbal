@@ -195,6 +195,14 @@ export interface Subscription {
 }
 
 // ─── CMS ───────────────────────────────────────────────
+export interface ArticleTranslation {
+  language: string;
+  title: string;
+  content: string;
+  summary: string;
+  slug: string;
+}
+
 export interface Article {
   id: string;
   title: string;
@@ -206,6 +214,7 @@ export interface Article {
   isPublished: boolean;
   publishedAt: string;
   createdAt: string;
+  translations?: ArticleTranslation[];
 }
 
 export interface Faq {

@@ -19,4 +19,5 @@ public class Article : BaseEntity
     public SeoPage? SeoPage { get; set; }
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<ArticleTag> ArticleTags { get; set; } = new List<ArticleTag>();
+    public ICollection<ArticleTranslation> Translations { get; set; } = new List<ArticleTranslation>();
 }

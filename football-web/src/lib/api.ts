@@ -181,11 +181,19 @@ export const api = {
 
   // ─── Articles ────────────────────────────────────────
   articles: {
-    list: (page = 1, pageSize = 10) =>
-      request<{ items: Article[]; total: number }>(`/Articles?page=${page}&pageSize=${pageSize}`),
-    getBySlug: (slug: string) => request<Article>(`/Articles/${slug}`),
-    create: (data: Partial<Article>) => request<Article>("/Articles", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<Article>) => request<void>(`/Articles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    list: (page = 1, pageSize = 10, lang?: string) => {
+      const qs = [`page=${page}`, `pageSize=${pageSize}`];
+      if (lang) qs.push(`lang=${lang}`);
+      return request<{ items: Article[]; total: number }>(`/Articles?${qs.join("&")}`);
+    },
+    getBySlug: (slug: string, lang?: string) => {
+      const qs = lang ? `?lang=${lang}` : "";
+      return request<Article>(`/Articles/${slug}${qs}`);
+    },
+    create: (data: { title: string; content: string; summary?: string; slug?: string; coverImageUrl?: string; translations?: { language: string; title: string; content: string; summary: string; slug: string }[] }) =>
+      request<Article>("/Articles", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: { title: string; content: string; summary?: string; slug?: string; coverImageUrl?: string; translations?: { language: string; title: string; content: string; summary: string; slug: string }[] }) =>
+      request<void>(`/Articles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/Articles/${id}`, { method: "DELETE" }),
     publish: (id: string) => request<void>(`/Articles/${id}/publish`, { method: "PUT" }),
   },

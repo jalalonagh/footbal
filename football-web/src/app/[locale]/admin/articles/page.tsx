@@ -6,13 +6,21 @@ import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import type { Article } from "@/lib/types";
 
-const EMPTY_FORM: Partial<Article> = {
-  title: "",
-  content: "",
-  summary: "",
-  slug: "",
-  coverImageUrl: "",
-};
+interface LangForm {
+  title: string;
+  content: string;
+  summary: string;
+  slug: string;
+}
+
+interface ArticleForm {
+  coverImageUrl: string;
+  en: LangForm;
+  fa: LangForm;
+}
+
+const EMPTY_LANG: LangForm = { title: "", content: "", summary: "", slug: "" };
+const EMPTY_FORM: ArticleForm = { coverImageUrl: "", en: { ...EMPTY_LANG }, fa: { ...EMPTY_LANG } };
 
 export default function AdminArticles() {
   const { isAdmin, loading: authLoading } = useAuth();
@@ -21,7 +29,8 @@ export default function AdminArticles() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<Article | null>(null);
-  const [form, setForm] = useState<Partial<Article>>(EMPTY_FORM);
+  const [form, setForm] = useState<ArticleForm>(EMPTY_FORM);
+  const [activeLang, setActiveLang] = useState<"en" | "fa">("en");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -45,18 +54,48 @@ export default function AdminArticles() {
     if (isAdmin) loadItems();
   }, [isAdmin]);
 
-  const openCreate = () => { setEditingItem(null); setForm(EMPTY_FORM); setShowForm(true); };
-  const openEdit = (item: Article) => { setEditingItem(item); setForm(item); setShowForm(true); };
+  const openCreate = () => { setEditingItem(null); setForm(EMPTY_FORM); setActiveLang("en"); setShowForm(true); };
+
+  const openEdit = (item: Article) => {
+    setEditingItem(item);
+    const faTr = item.translations?.find((t) => t.language === "Persian");
+    setForm({
+      coverImageUrl: item.coverImageUrl || "",
+      en: { title: item.title, content: item.content, summary: item.summary || "", slug: item.slug },
+      fa: { title: faTr?.title || "", content: faTr?.content || "", summary: faTr?.summary || "", slug: faTr?.slug || "" },
+    });
+    setActiveLang("en");
+    setShowForm(true);
+  };
+
   const closeForm = () => { setShowForm(false); setEditingItem(null); };
+
+  const updateLang = (lang: "en" | "fa", field: keyof LangForm, value: string) => {
+    setForm((prev) => ({ ...prev, [lang]: { ...prev[lang], [field]: value } }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const translations: { language: string; title: string; content: string; summary: string; slug: string }[] = [];
+      if (form.fa.title || form.fa.content) {
+        translations.push({ language: "Persian", title: form.fa.title, content: form.fa.content, summary: form.fa.summary, slug: form.fa.slug });
+      }
+
+      const payload = {
+        title: form.en.title,
+        content: form.en.content,
+        summary: form.en.summary,
+        slug: form.en.slug,
+        coverImageUrl: form.coverImageUrl,
+        translations,
+      };
+
       if (editingItem) {
-        await api.articles.update(editingItem.id, form);
+        await api.articles.update(editingItem.id, payload);
         setMessage("Article updated");
       } else {
-        await api.articles.create(form);
+        await api.articles.create(payload);
         setMessage("Article created");
       }
       setError("");
@@ -93,6 +132,8 @@ export default function AdminArticles() {
 
   if (authLoading || !isAdmin) return null;
 
+  const currentLang = form[activeLang];
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -107,28 +148,39 @@ export default function AdminArticles() {
       {showForm && (
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
           <h2 className="text-lg font-bold text-white mb-4">{editingItem ? "Edit Article" : "Create Article"}</h2>
+
+          <div className="flex gap-2 mb-4">
+            <button type="button" onClick={() => setActiveLang("en")} className={`px-4 py-2 rounded-lg text-sm font-medium ${activeLang === "en" ? "bg-green-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}>
+              English
+            </button>
+            <button type="button" onClick={() => setActiveLang("fa")} className={`px-4 py-2 rounded-lg text-sm font-medium ${activeLang === "fa" ? "bg-green-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}>
+              فارسی
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-1">Cover Image URL</label>
+              <input type="text" value={form.coverImageUrl} onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-400 text-sm mb-1">Title</label>
-                <input type="text" required value={form.title || ""} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <label className="block text-gray-400 text-sm mb-1">Title ({activeLang === "en" ? "English" : "فارسی"})</label>
+                <input type="text" required value={currentLang.title} onChange={(e) => updateLang(activeLang, "title", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
               <div>
-                <label className="block text-gray-400 text-sm mb-1">Slug</label>
-                <input type="text" required value={form.slug || ""} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Cover Image URL</label>
-                <input type="text" value={form.coverImageUrl || ""} onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Summary</label>
-                <input type="text" value={form.summary || ""} onChange={(e) => setForm({ ...form, summary: e.target.value })} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <label className="block text-gray-400 text-sm mb-1">Slug ({activeLang === "en" ? "English" : "فارسی"})</label>
+                <input type="text" required value={currentLang.slug} onChange={(e) => updateLang(activeLang, "slug", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
             </div>
             <div>
-              <label className="block text-gray-400 text-sm mb-1">Content</label>
-              <textarea rows={6} required value={form.content || ""} onChange={(e) => setForm({ ...form, content: e.target.value })} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <label className="block text-gray-400 text-sm mb-1">Summary ({activeLang === "en" ? "English" : "فارسی"})</label>
+              <input type="text" value={currentLang.summary} onChange={(e) => updateLang(activeLang, "summary", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+            <div>
+              <label className="block text-gray-400 text-sm mb-1">Content ({activeLang === "en" ? "English" : "فارسی"})</label>
+              <textarea rows={6} required value={currentLang.content} onChange={(e) => updateLang(activeLang, "content", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div className="flex gap-3">
               <button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">

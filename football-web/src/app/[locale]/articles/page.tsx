@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { api } from "@/lib/api";
 import type { Article } from "@/lib/types";
 import { Link } from "@/i18n/routing";
@@ -9,15 +9,18 @@ import { Link } from "@/i18n/routing";
 export default function ArticlesPage() {
   const t = useTranslations("cms");
   const tNav = useTranslations("nav");
+  const locale = useLocale();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const apiLang = locale === "fa" ? "Persian" : "English";
+
   useEffect(() => {
-    api.articles.list(1, 20)
+    api.articles.list(1, 20, apiLang)
       .then((d) => setArticles(d.items))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [apiLang]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">

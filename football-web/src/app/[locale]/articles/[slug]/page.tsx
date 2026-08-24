@@ -2,32 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { api } from "@/lib/api";
 import type { Article } from "@/lib/types";
+import { Link } from "@/i18n/routing";
 
 export default function ArticleDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const locale = useLocale();
   const slug = params?.slug as string;
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const apiLang = locale === "fa" ? "Persian" : "English";
+
   useEffect(() => {
     if (!slug) return;
-    api.articles.getBySlug(slug)
+    api.articles.getBySlug(slug, apiLang)
       .then(setArticle)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, apiLang]);
 
   if (loading) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Loading...</div>;
   if (!article) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">Article not found.</div>;
 
+  const otherLang = locale === "fa" ? "English" : "Persian";
+  const otherSlug = article.translations?.find((t) => t.language === otherLang)?.slug;
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <nav className="bg-gray-800 px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.push("/articles")} className="text-white hover:text-green-400">&larr; Back</button>
+        <Link href="/articles" className="text-white hover:text-green-400">&larr; Back</Link>
         <h1 className="text-xl font-bold">Article</h1>
+        {otherSlug && (
+          <Link href={`/articles/${otherSlug}`} className="ml-auto text-sm text-green-400 hover:text-green-300">
+            {locale === "fa" ? "English" : "فارسی"}
+          </Link>
+        )}
       </nav>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
