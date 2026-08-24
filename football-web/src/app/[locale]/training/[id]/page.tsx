@@ -99,6 +99,7 @@ export default function TrainingPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [hasAIAccess, setHasAIAccess] = useState<boolean | null>(null);
   const [playerCount, setPlayerCount] = useState<number>(11);
+  const [passMode, setPassMode] = useState(false);
 
   useEffect(() => {
     if (scenarioId) api.scenarios.get(scenarioId).then(setScenario).catch(() => {});
@@ -287,6 +288,7 @@ export default function TrainingPage() {
           <FootballPitch
             players={players} ball={ball}
             selectedPlayerId={selectedPlayerId} directionMode={directionMode}
+            passMode={passMode}
             onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
             onPlayerSelect={setSelectedPlayerId}
             onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
@@ -334,6 +336,16 @@ export default function TrainingPage() {
                 ))}
               </select>
             </div>
+            <button
+              onClick={() => setPassMode(!passMode)}
+              className={`w-full py-2 rounded mb-1 text-sm font-semibold transition ${
+                passMode
+                  ? "bg-yellow-500 text-gray-900 hover:bg-yellow-400"
+                  : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+              }`}
+            >
+              {passMode ? (t("passModeOn") || "⚽ Pass Mode ON") : (t("passModeOff") || "⚽ Pass Mode OFF")}
+            </button>
             <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
             <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
             <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear Directions"}</button>
@@ -483,6 +495,16 @@ export default function TrainingPage() {
                   {[5, 6, 7, 8, 9, 10, 11].map((n) => (<option key={n} value={n}>{n}v{n}</option>))}
                 </select>
               </div>
+              <button
+                onClick={() => setPassMode(!passMode)}
+                className={`w-full py-2 rounded mb-1 text-sm font-semibold transition ${
+                  passMode
+                    ? "bg-yellow-500 text-gray-900 hover:bg-yellow-400"
+                    : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+                }`}
+              >
+                {passMode ? (t("passModeOn") || "⚽ Pass Mode ON") : (t("passModeOff") || "⚽ Pass Mode OFF")}
+              </button>
               <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
               <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
               <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear"}</button>

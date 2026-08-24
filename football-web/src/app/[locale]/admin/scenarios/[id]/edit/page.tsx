@@ -181,8 +181,11 @@ export default function ScenarioEditorPage() {
     setMessage("");
     try {
       await api.scenarios.update(scenario.id, {
-        playerCount,
+        name: scenario.name,
         description: coachingNotes,
+        category: scenario.category,
+        difficulty: scenario.difficulty,
+        gamePhase: scenario.gamePhase,
         formation: `${playerCount}v${playerCount}`,
       });
 
@@ -194,12 +197,15 @@ export default function ScenarioEditorPage() {
       const playersToSave = players.map((p) => ({
         number: p.number,
         position: p.position,
+        role: p.role || "Player",
         startX: Math.round(p.x),
         startY: Math.round(p.y),
         teamId: p.teamId,
+        direction: 0,
         speed: 5,
         hasBall: p.hasBall,
         isTarget: p.isTarget,
+        isDefender: false,
       }));
 
       await api.scenarios.bulkAddPlayers(scenario.id, playersToSave);

@@ -42,6 +42,7 @@ interface FootballPitchProps {
   ball: BallData;
   selectedPlayerId: string | null;
   directionMode: DirectionMode;
+  passMode?: boolean;
   onPlayerMove?: (playerId: string, x: number, y: number) => void;
   onBallMove?: (x: number, y: number, clearHolder?: boolean) => void;
   onPlayerSelect?: (playerId: string | null) => void;
@@ -59,7 +60,7 @@ interface FootballPitchProps {
 const DIR_LEN = 18;
 
 export default function FootballPitch({
-  players, ball, selectedPlayerId, directionMode,
+  players, ball, selectedPlayerId, directionMode, passMode = false,
   onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet, onBallClaimed, onPass,
   disabled = false, width = 800, height = 520,
   aiSuggestions = [], showAISuggestions = false,
@@ -70,7 +71,6 @@ export default function FootballPitch({
   const didDrag = useRef(false);
   const clickTimer = useRef<NodeJS.Timeout | null>(null);
   const [passTarget, setPassTarget] = useState<string | null>(null);
-  const [isPassing, setIsPassing] = useState(false);
 
   const toSvgX = (x: number) => (x / 100) * width;
   const toSvgY = (y: number) => (y / 100) * height;
@@ -95,7 +95,7 @@ export default function FootballPitch({
     const clickedPlayer = players.find((p) => p.id === playerId);
     const holderPlayer = players.find((p) => p.hasBall);
 
-    if (holderPlayer && holderPlayer.id !== playerId && !isPassing) {
+    if (passMode && holderPlayer && holderPlayer.id !== playerId) {
       onPass?.(holderPlayer.id, playerId);
       return;
     }
@@ -106,7 +106,7 @@ export default function FootballPitch({
       setDragging(playerId);
       setDragOffset({ x: pos.x - clickedPlayer.x, y: pos.y - clickedPlayer.y });
     }
-  }, [disabled, directionMode, getMousePos, players, selectedPlayerId, onPlayerSelect, onPass, isPassing]);
+  }, [disabled, directionMode, getMousePos, players, selectedPlayerId, onPlayerSelect, onPass, passMode]);
 
   const handleBallMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled || directionMode === "all") return;
