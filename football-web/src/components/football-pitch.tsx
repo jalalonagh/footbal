@@ -38,6 +38,15 @@ export interface AISuggestion {
   reason: string;
 }
 
+interface EvaluationData {
+  suggestedX: number;
+  suggestedY: number;
+  direction: { x: number; y: number };
+  explanation: string;
+  action: string;
+  reason: string;
+}
+
 interface FootballPitchProps {
   players: PlayerData[];
   ball: BallData;
@@ -54,9 +63,12 @@ interface FootballPitchProps {
   disabled?: boolean;
   width?: number;
   height?: number;
-  aiSuggestions?: AISuggestion[];
+  evaluations?: Record<string, EvaluationData>;
+  aiSuggestions?: any[];
   showAISuggestions?: boolean;
 }
+
+export type { EvaluationData };
 
 const DIR_LEN = 18;
 
@@ -64,7 +76,7 @@ export default function FootballPitch({
   players, ball, selectedPlayerId, directionMode, passMode = false,
   onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet, onBallClaimed, onPass,
   disabled = false, width = 800, height = 520,
-  aiSuggestions = [], showAISuggestions = false,
+  evaluations = {}, aiSuggestions = [], showAISuggestions = false,
 }: FootballPitchProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -280,7 +292,7 @@ export default function FootballPitch({
         return renderArrow(ball.x, ball.y, dir.x, dir.y, c, "bd", directionMode === "wrong");
       })()}
 
-      {showAISuggestions && aiSuggestions.map((suggestion) => {
+      {showAISuggestions && aiSuggestions.map((suggestion: any) => {
         const player = players.find((p) => p.id === suggestion.playerId);
         if (!player) return null;
         const color = "#a855f7";
@@ -306,6 +318,21 @@ export default function FootballPitch({
             <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="13" fontWeight="bold">{p.number}</text>
             <text textAnchor="middle" y="22" fill="white" fontSize="8" opacity="0.8">{p.position}</text>
             {ball.holderId === p.id && <circle r="6" cx="12" cy="-12" fill="white" stroke="#333" strokeWidth="1.5" />}
+          </g>
+        );
+      })}
+
+      {Object.entries(evaluations).map(([pid, ev]) => {
+        const p = players.find((pl) => pl.id === pid);
+        if (!p) return null;
+        const gk = p.isGoalkeeper;
+        const fill = p.teamId === 1 ? (gk ? "#f59e0b" : "#3b82f6") : (gk ? "#dc2626" : "#ef4444");
+        return (
+          <g key={`ghost-${pid}`} transform={`translate(${toSvgX(ev.suggestedX)}, ${toSvgY(ev.suggestedY)})`}>
+            <circle r="14" fill={fill} opacity="0.35" stroke="white" strokeWidth="1.5" strokeDasharray="4,2" />
+            <text textAnchor="middle" dominantBaseline="central" fill="white" fontSize="13" fontWeight="bold" opacity="0.7">{p.number}</text>
+            <text textAnchor="middle" y="22" fill="white" fontSize="8" opacity="0.5">{p.position}</text>
+            {renderArrow(ev.suggestedX, ev.suggestedY, ev.direction.x, ev.direction.y, "#a855f7", `eval-${pid}`, true)}
           </g>
         );
       })}

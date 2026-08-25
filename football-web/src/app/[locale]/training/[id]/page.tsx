@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import FootballPitch, { PlayerData, BallData, DirectionMode, AISuggestion } from "@/components/football-pitch";
+import FootballPitch, { PlayerData, BallData, DirectionMode } from "@/components/football-pitch";
 import { api } from "@/lib/api";
 import { Link } from "@/i18n/routing";
 
@@ -90,19 +90,65 @@ export default function TrainingPage() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [directionMode, setDirectionMode] = useState<DirectionMode>("current");
   const [scenario, setScenario] = useState<any>(null);
+  const [solutions, setSolutions] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
   const [coaching, setCoaching] = useState<CoachingTip | null>(null);
   const [showCoaching, setShowCoaching] = useState(false);
 
-  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
+  const [evaluations, setEvaluations] = useState<Record<string, {
+    suggestedX: number;
+    suggestedY: number;
+    direction: { x: number; y: number };
+    explanation: string;
+    action: string;
+    reason: string;
+  }>>({});
+  const [evaluating, setEvaluating] = useState(false);
+
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
-  const [aiExplanation, setAiExplanation] = useState<string>("");
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
   const [hasAIAccess, setHasAIAccess] = useState<boolean | null>(null);
   const [playerCount, setPlayerCount] = useState<number>(11);
   const [passMode, setPassMode] = useState(false);
 
   useEffect(() => {
-    if (scenarioId) api.scenarios.get(scenarioId).then(setScenario).catch(() => {});
+    if (scenarioId) {
+      Promise.all([
+        api.scenarios.get(scenarioId),
+        api.scenarios.getPlayers(scenarioId),
+        api.scenarios.getSolutions(scenarioId).catch(() => []),
+        api.scenarios.getRules(scenarioId).catch(() => []),
+      ])
+        .then(([s, p, sols, rls]) => {
+          setScenario(s);
+          setSolutions(sols || []);
+          setRules(rls || []);
+          if (p && p.length > 0) {
+            const mapped = p.map((sp: any) => ({
+              id: sp.id,
+              teamId: sp.teamId,
+              number: sp.number,
+              x: sp.startX,
+              y: sp.startY,
+              hasBall: sp.hasBall,
+              isTarget: sp.isTarget,
+              isDefender: sp.teamId === 2,
+              isGoalkeeper: sp.position === "GK",
+              position: sp.position,
+              direction: null,
+              suggestedDirection: null,
+              wrongDirection: null,
+            }));
+            setPlayers(mapped);
+            const holder = mapped.find((pl: any) => pl.hasBall);
+            if (holder) setBall({ x: holder.x, y: holder.y, holderId: holder.id, direction: null, suggestedDirection: null, wrongDirection: null });
+          }
+        })
+        .catch(() => {});
+    }
   }, [scenarioId]);
 
   useEffect(() => {
@@ -154,8 +200,10 @@ export default function TrainingPage() {
     setPlayers([...team1, ...team2]);
     setBall({ x: 50, y: 50, holderId: null, direction: null, suggestedDirection: null, wrongDirection: null });
     setSelectedPlayerId(null);
-    setShowAISuggestions(false);
+    setEvaluations({});
     setAiSuggestions([]);
+    setShowAISuggestions(false);
+    setAiExplanation(null);
   }, [playerCount]);
 
   const handleDirectionSet = useCallback((playerId: string, dx: number, dy: number) => {
@@ -192,30 +240,67 @@ export default function TrainingPage() {
     });
   }, [directionMode]);
 
-  const handleEvaluate = useCallback(async () => {
-    try {
-      const result = await api.tactical.evaluate({
-        scenarioId, userX: ball.x, userY: ball.y,
-        actionType: "POSITIONING", timing: 1.5,
-      });
-      setCoaching(result);
-    } catch {
-      setCoaching({ overall: 78, position: 82, timing: 75, movement: 76, explanation: t("coachingTip") });
+  const handleAISuggestion = useCallback(async () => {
+    if (!selectedPlayerId) return;
+    if (hasAIAccess === false) {
+      alert(t("subscriptionRequired") || "Subscription required for AI features");
+      return;
     }
-    setShowCoaching(true);
-  }, [scenarioId, ball.x, ball.y, t]);
+    setAiLoading(true);
+    try {
+      const ballHolder = ball.holderId ? players.find((p) => p.id === ball.holderId) : null;
+      const response = await api.ai.getTacticalSuggestion({
+        selectedPlayerId,
+        selectedPlayerNumber: players.find((p) => p.id === selectedPlayerId)?.number || 0,
+        selectedPlayerPosition: players.find((p) => p.id === selectedPlayerId)?.position || "",
+        selectedPlayerTeam: players.find((p) => p.id === selectedPlayerId)?.teamId || 0,
+        selectedPlayerX: players.find((p) => p.id === selectedPlayerId)?.x || 0,
+        selectedPlayerY: players.find((p) => p.id === selectedPlayerId)?.y || 0,
+        hasBall: ball.holderId === selectedPlayerId,
+        allPlayers: players.map((p) => ({
+          id: p.id, position: p.position, teamId: p.teamId,
+          x: p.x, y: p.y, number: p.number,
+          isGoalkeeper: p.isGoalkeeper, hasBall: p.hasBall,
+        })),
+        ballHolder: ballHolder ? {
+          id: ballHolder.id, position: ballHolder.position, teamId: ballHolder.teamId,
+          x: ballHolder.x, y: ballHolder.y, number: ballHolder.number,
+          isGoalkeeper: ballHolder.isGoalkeeper, hasBall: ballHolder.hasBall,
+        } : undefined,
+        scenarioContext: scenario?.description,
+      });
+      setAiSuggestions(response.teammateSuggestions || []);
+      setAiExplanation(response.explanation || null);
+      setShowAISuggestions(true);
+    } catch (err: any) {
+      console.error("AI suggestion failed", err);
+    }
+    setAiLoading(false);
+  }, [selectedPlayerId, players, ball, scenario, hasAIAccess, t]);
+
+  const handleClearAISuggestions = useCallback(() => {
+    setAiSuggestions([]);
+    setShowAISuggestions(false);
+    setAiExplanation(null);
+  }, []);
 
   const handleClearDirections = useCallback(() => {
     setPlayers((prev) => prev.map((p) => ({ ...p, direction: null, suggestedDirection: null, wrongDirection: null })));
     setBall((b) => ({ ...b, direction: null, suggestedDirection: null, wrongDirection: null }));
   }, []);
 
-  const handleAISuggestion = useCallback(async () => {
+  const handleEvaluate = useCallback(async () => {
     if (!selectedPlayerId) return;
     const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
     if (!selectedPlayer) return;
+    if (hasAIAccess === null) return;
+    if (hasAIAccess === false) {
+      alert(t("subscriptionRequired") || "Subscription required for AI features");
+      return;
+    }
+    if (evaluations[selectedPlayerId]) return;
 
-    setAiLoading(true);
+    setEvaluating(true);
     try {
       const ballHolder = ball.holderId ? players.find((p) => p.id === ball.holderId) : null;
       const response = await api.ai.getTacticalSuggestion({
@@ -239,23 +324,35 @@ export default function TrainingPage() {
         scenarioContext: scenario?.description,
       });
 
-      setAiExplanation(response.explanation);
-      const allSuggestions: AISuggestion[] = [response.selectedPlayerSuggestion, ...response.teammateSuggestions];
-      if (response.passTarget && !allSuggestions.some(s => s.playerId === response.passTarget!.playerId)) {
-        allSuggestions.push(response.passTarget);
-      }
-      setAiSuggestions(allSuggestions);
-      setShowAISuggestions(true);
-    } catch (err) {
-      setAiExplanation("خطا در دریافت پیشنهاد هوش مصنوعی");
-    }
-    setAiLoading(false);
-  }, [selectedPlayerId, players, ball, scenario]);
+      const sug = response.selectedPlayerSuggestion;
+      const suggestedX = Math.max(2, Math.min(98, selectedPlayer.x + sug.moveX));
+      const suggestedY = Math.max(2, Math.min(98, selectedPlayer.y + sug.moveY));
+      const dirLen = Math.sqrt(sug.moveX * sug.moveX + sug.moveY * sug.moveY) || 1;
 
-  const handleClearAISuggestions = useCallback(() => {
-    setAiSuggestions([]);
-    setShowAISuggestions(false);
-    setAiExplanation("");
+      setEvaluations((prev) => ({
+        ...prev,
+        [selectedPlayerId]: {
+          suggestedX,
+          suggestedY,
+          direction: { x: (sug.moveX / dirLen) * 18, y: (sug.moveY / dirLen) * 18 },
+          explanation: response.explanation,
+          action: sug.action,
+          reason: sug.reason,
+        },
+      }));
+    } catch (e: any) {
+      const msg = e?.message || "Error";
+      if (msg.includes("403") || msg.includes("Forbidden")) {
+        alert(t("subscriptionRequired") || "Subscription required for AI features");
+      } else {
+        alert("Evaluation error: " + msg);
+      }
+    }
+    setEvaluating(false);
+  }, [selectedPlayerId, players, ball, scenario, evaluations]);
+
+  const handleClearEvaluations = useCallback(() => {
+    setEvaluations({});
   }, []);
 
   const scoreColor = (s: number) => s >= 80 ? "text-green-600" : s >= 60 ? "text-yellow-600" : "text-red-600";
@@ -293,7 +390,7 @@ export default function TrainingPage() {
             onPlayerSelect={setSelectedPlayerId}
             onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
             onBallClaimed={handleBallClaimed} onPass={handlePass}
-            aiSuggestions={aiSuggestions} showAISuggestions={showAISuggestions}
+            evaluations={evaluations}
           />
         </div>
 
@@ -347,9 +444,60 @@ export default function TrainingPage() {
               {passMode ? (t("passModeOn") || "⚽ Pass Mode ON") : (t("passModeOff") || "⚽ Pass Mode OFF")}
             </button>
             <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
+            {hasAIAccess !== false && (
+              <button onClick={handleAISuggestion} disabled={aiLoading || !selectedPlayerId} className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-1 text-sm disabled:opacity-50">
+                {aiLoading ? "..." : (t("getAISuggestion") || "Get AI Suggestion")}
+              </button>
+            )}
             <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
             <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear Directions"}</button>
           </div>
+
+          {scenario && (
+            <div className="bg-gray-700 rounded-lg p-3">
+              <h3 className="text-white font-bold mb-2">{t("gameInfo") || "Game Info"}</h3>
+              <div className="text-sm text-gray-300 space-y-1">
+                <p>{t("formation") || "Formation"}: <span className="font-semibold">{scenario.formation}</span></p>
+                <p>{t("phase") || "Phase"}: <span className="font-semibold">{scenario.gamePhase}</span></p>
+                <p>{t("minute") || "Minute"}: <span className="font-semibold">{scenario.gameMinute}&apos;</span></p>
+                <p>{t("mode") || "Mode"}: <span className="font-semibold">{scenario.trainingMode}</span></p>
+                <p>Score: <span className="font-semibold">{scenario.homeScore} - {scenario.awayScore}</span></p>
+                {scenario.description && <p className="text-gray-400 text-xs mt-2">{scenario.description}</p>}
+              </div>
+            </div>
+          )}
+
+          {solutions.length > 0 && (
+            <div className="bg-gray-700 rounded-lg p-3">
+              <h3 className="text-white font-bold mb-2">{t("coachingNotes") || "Coaching Notes"}</h3>
+              <div className="space-y-2">
+                {solutions.map((sol: any) => (
+                  <div key={sol.id} className="bg-gray-600 rounded p-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-white text-xs font-semibold">{sol.name}</span>
+                      <span className="text-green-400 text-xs">{sol.score}%</span>
+                    </div>
+                    {sol.coachingExplanation && (
+                      <p className="text-gray-300 text-xs">{sol.coachingExplanation}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {rules.length > 0 && (
+            <div className="bg-gray-700 rounded-lg p-3">
+              <h3 className="text-white font-bold mb-2">{t("scenarioRules") || "Scenario Rules"}</h3>
+              <div className="space-y-1">
+                {rules.filter((r: any) => r.isActive).map((rule: any, i: number) => (
+                  <div key={rule.id} className="text-xs text-gray-300 bg-gray-600 rounded p-2">
+                    <span className="text-yellow-400">Rule {i + 1}</span> (Priority: {rule.priority})
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {selPlayer && (
             <div className="bg-gray-700 rounded-lg p-3">
@@ -401,50 +549,73 @@ export default function TrainingPage() {
           )}
 
           <div className="bg-gray-700 rounded-lg p-3">
-            <h3 className="text-white font-bold mb-2">{t("aiSuggestion") || "AI Suggestion"}</h3>
+            <h3 className="text-white font-bold mb-2">{t("evaluateDecision") || "Evaluate Decision"}</h3>
             {!selectedPlayerId ? (
-              <p className="text-gray-400 text-xs">{t("selectPlayerForAI") || "Select a player to get AI suggestion"}</p>
+              <p className="text-gray-400 text-xs">{t("selectPlayerForEval") || "Select a player to evaluate"}</p>
             ) : hasAIAccess === false ? (
               <div className="text-center">
                 <p className="text-yellow-400 text-xs mb-2">{t("subscriptionRequired") || "Subscription required"}</p>
-                <button className="w-full py-1.5 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700">
+                <Link href="/pricing" className="w-full py-1.5 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 inline-block">
                   {t("upgrade") || "Upgrade"}
-                </button>
+                </Link>
               </div>
+            ) : evaluations[selectedPlayerId] ? (
+              <p className="text-green-400 text-xs">{t("alreadyEvaluated") || "Already evaluated"}</p>
             ) : (
-              <>
-                <button
-                  onClick={handleAISuggestion}
-                  disabled={aiLoading}
-                  className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-2 text-sm disabled:opacity-50">
-                  {aiLoading ? (t("analyzing") || "Analyzing...") : (t("getAISuggestion") || "Get AI Suggestion")}
-                </button>
-                {showAISuggestions && (
-                  <button onClick={handleClearAISuggestions}
-                    className="w-full py-1.5 bg-gray-600 text-white rounded hover:bg-gray-500 text-xs">
-                    {t("clearAISuggestions") || "Clear AI Suggestions"}
-                  </button>
-                )}
-              </>
+              <button
+                onClick={handleEvaluate}
+                disabled={evaluating}
+                className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm disabled:opacity-50">
+                {evaluating ? (t("analyzing") || "Analyzing...") : (t("evaluatePlayer") || "Evaluate Player Position")}
+              </button>
+            )}
+            {Object.keys(evaluations).length > 0 && (
+              <button onClick={handleClearEvaluations}
+                className="w-full mt-2 py-1.5 bg-red-600/80 text-white rounded hover:bg-red-700 text-xs">
+                {t("clearEvaluations") || "Clear All Evaluations"}
+              </button>
             )}
           </div>
 
-          {showAISuggestions && aiExplanation && (
-            <div className="bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
-              <h3 className="text-purple-300 font-bold mb-2 text-sm">{t("aiExplanation") || "AI Analysis"}</h3>
-              <p className="text-gray-300 text-xs leading-relaxed">{aiExplanation}</p>
-              {aiSuggestions.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {aiSuggestions.map((s) => (
-                    <div key={s.playerId} className="text-xs text-gray-400">
-                      <span className="text-purple-400">#{players.find(p => p.id === s.playerId)?.number}</span>
-                      {" "}({s.action}): {s.reason}
-                    </div>
-                  ))}
-                </div>
+          {showAISuggestions && aiSuggestions.length > 0 && (
+            <div className="bg-gray-700 rounded-lg p-3">
+              <h3 className="text-white font-bold mb-2">{t("aiSuggestion") || "AI Suggestion"}</h3>
+              <div className="space-y-1">
+                {aiSuggestions.map((s: any, i: number) => (
+                  <div key={i} className="text-xs text-gray-300 bg-gray-600 rounded p-2">
+                    <span className="text-purple-400">#{players.find(p => p.id === s.playerId)?.number || "?"}</span> — {s.action}
+                    <br /><span className="text-gray-400">{s.reason}</span>
+                  </div>
+                ))}
+              </div>
+              {aiExplanation && (
+                <p className="text-gray-300 text-xs mt-2">{aiExplanation}</p>
               )}
             </div>
           )}
+
+          {Object.keys(evaluations).length > 0 && (
+            <div className="bg-purple-900/50 border border-purple-500/30 rounded-lg p-3">
+              <h3 className="text-purple-300 font-bold mb-2 text-sm">{t("evaluations") || "Evaluations"}</h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {Object.entries(evaluations).map(([pid, ev]) => {
+                  const p = players.find((pl) => pl.id === pid);
+                  return (
+                    <div key={pid} className="bg-gray-700/50 rounded p-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-purple-400 font-bold text-xs">#{p?.number}</span>
+                        <span className="text-white text-xs">{p?.position}</span>
+                        <span className="text-gray-500 text-xs">({p?.teamId === 1 ? "Home" : "Away"})</span>
+                      </div>
+                      <p className="text-green-400 text-xs font-semibold">{ev.action}</p>
+                      <p className="text-gray-300 text-xs">{ev.reason}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
         )}
 
@@ -506,6 +677,11 @@ export default function TrainingPage() {
                 {passMode ? (t("passModeOn") || "⚽ Pass Mode ON") : (t("passModeOff") || "⚽ Pass Mode OFF")}
               </button>
               <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
+              {hasAIAccess !== false && (
+                <button onClick={handleAISuggestion} disabled={aiLoading || !selectedPlayerId} className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-1 text-sm disabled:opacity-50">
+                  {aiLoading ? "..." : (t("getAISuggestion") || "Get AI Suggestion")}
+                </button>
+              )}
               <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
               <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear"}</button>
             </div>
@@ -552,7 +728,12 @@ export default function TrainingPage() {
               {!selectedPlayerId ? (
                 <p className="text-gray-400 text-xs">{t("selectPlayerForAI") || "Select a player"}</p>
               ) : hasAIAccess === false ? (
-                <p className="text-yellow-400 text-xs">{t("subscriptionRequired") || "Subscription required"}</p>
+                <div className="text-center">
+                  <p className="text-yellow-400 text-xs mb-2">{t("subscriptionRequired") || "Subscription required"}</p>
+                  <Link href="/pricing" className="w-full py-1.5 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 inline-block">
+                    {t("upgrade") || "Upgrade"}
+                  </Link>
+                </div>
               ) : (
                 <>
                   <button onClick={handleAISuggestion} disabled={aiLoading} className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-2 text-sm disabled:opacity-50">

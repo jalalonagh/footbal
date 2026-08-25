@@ -40,13 +40,15 @@ public class ZarinPalPaymentGateway : IPaymentGateway
                 amount = amountInRials,
                 callback_url = callbackUrl,
                 description = description,
-                email = email
+                metadata = new { email = email }
             };
 
-            _logger.LogInformation("ZarinPal payment request: Sandbox={Sandbox}, Url={Url}", IsSandbox, ApiUrl);
+            _logger.LogInformation("ZarinPal request: Sandbox={Sandbox}, Url={Url}, Amount={Amount}, Callback={Callback}", IsSandbox, ApiUrl, amountInRials, callbackUrl);
 
             var response = await _httpClient.PostAsJsonAsync(ApiUrl, request);
             var json = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("ZarinPal raw response: {Json}", json);
+
             var result = JsonSerializer.Deserialize<ZarinPalRequestResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             if (result?.Data?.Code == 100 && !string.IsNullOrEmpty(result.Data.Authority))
@@ -111,13 +113,13 @@ public class ZarinPalPaymentGateway : IPaymentGateway
 internal class ZarinPalRequestResponse
 {
     public ZarinPalData? Data { get; set; }
-    public List<string>? Errors { get; set; }
+    public object? Errors { get; set; }
 }
 
 internal class ZarinPalVerifyResponse
 {
     public ZarinPalData? Data { get; set; }
-    public List<string>? Errors { get; set; }
+    public object? Errors { get; set; }
 }
 
 internal class ZarinPalData
@@ -126,4 +128,6 @@ internal class ZarinPalData
     public string? Message { get; set; }
     public string? Authority { get; set; }
     public long? RefId { get; set; }
+    public string? Link { get; set; }
+    public int? Fee { get; set; }
 }

@@ -23,14 +23,9 @@ export default function Navbar() {
             {t("scenarios")}
           </Link>
           {isAuthenticated && (
-            <>
-              <Link href="/dashboard" className="text-gray-300 hover:text-white transition text-sm">
-                {t("dashboard")}
-              </Link>
-              <Link href="/training" className="text-gray-300 hover:text-white transition text-sm">
-                {t("training")}
-              </Link>
-            </>
+            <Link href="/dashboard" className="text-gray-300 hover:text-white transition text-sm">
+              {t("dashboard")}
+            </Link>
           )}
           {isCoach && (
             <Link href="/teams" className="text-gray-300 hover:text-white transition text-sm">
