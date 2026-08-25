@@ -23,4 +23,5 @@ public class EFRepository<T> : IRepository<T> where T : class
     public async Task DeleteAsync(T entity) { _dbSet.Remove(entity); await Task.CompletedTask; }
     public async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null) => predicate == null ? await _dbSet.CountAsync() : await _dbSet.CountAsync(predicate);
     public async Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate) => await _dbSet.AnyAsync(predicate);
+    public DbContext GetDbContext() => _context;
 }

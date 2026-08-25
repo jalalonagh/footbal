@@ -51,7 +51,7 @@ export default function AdminArticles() {
   const loadItems = async () => {
     setLoading(true);
     try {
-      const res = await api.articles.list(1, 50);
+      const res = await api.articles.list(1, 50, undefined, true);
       setItems(res.items);
     } catch {
       setError("Failed to load articles");
@@ -128,17 +128,43 @@ export default function AdminArticles() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const hasEn = !!(form.en.title && form.en.content);
+    const hasFa = !!(form.fa.title && form.fa.content);
+
+    if (!hasEn && !hasFa) {
+      setError("At least one language (English or Persian) must have title and content");
+      return;
+    }
+
     try {
       const translations: Record<string, string>[] = [];
-      if (form.fa.title || form.fa.content) {
-        translations.push({ language: "Persian", title: form.fa.title, content: form.fa.content, summary: form.fa.summary, slug: form.fa.slug });
+
+      let baseTitle: string;
+      let baseContent: string;
+      let baseSummary: string;
+      let baseSlug: string;
+
+      if (hasEn) {
+        baseTitle = form.en.title;
+        baseContent = form.en.content;
+        baseSummary = form.en.summary;
+        baseSlug = form.en.slug;
+        if (hasFa) {
+          translations.push({ language: "Persian", title: form.fa.title, content: form.fa.content, summary: form.fa.summary, slug: form.fa.slug });
+        }
+      } else {
+        baseTitle = form.fa.title;
+        baseContent = form.fa.content;
+        baseSummary = form.fa.summary;
+        baseSlug = form.fa.slug;
       }
 
       const payload = {
-        title: form.en.title,
-        content: form.en.content,
-        summary: form.en.summary,
-        slug: form.en.slug,
+        title: baseTitle,
+        content: baseContent,
+        summary: baseSummary,
+        slug: baseSlug,
         coverImageUrl: form.coverImageUrl,
         coverImageAlt: form.coverImageAlt,
         metaTitle: form.metaTitle,
@@ -219,11 +245,11 @@ export default function AdminArticles() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Title ({activeLang === "en" ? "English" : "فارسی"})</label>
-                <input type="text" required value={currentLang.title} onChange={(e) => updateLang(activeLang, "title", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <input type="text" value={currentLang.title} onChange={(e) => updateLang(activeLang, "title", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Slug ({activeLang === "en" ? "English" : "فارسی"})</label>
-                <input type="text" required value={currentLang.slug} onChange={(e) => updateLang(activeLang, "slug", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <input type="text" value={currentLang.slug} onChange={(e) => updateLang(activeLang, "slug", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
             </div>
             <div>
@@ -250,7 +276,7 @@ export default function AdminArticles() {
                 {!form.en.title && !form.fa.title && <p className="text-xs text-yellow-400 mt-1">* At least one title is required to enable AI generation</p>}
               </div>
               <label className="block text-gray-400 text-sm mb-1">Content ({activeLang === "en" ? "English" : "فارسی"})</label>
-              <textarea rows={10} required value={currentLang.content} onChange={(e) => updateLang(activeLang, "content", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <textarea rows={10} value={currentLang.content} onChange={(e) => updateLang(activeLang, "content", e.target.value)} className="w-full bg-gray-700 text-white rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
 
             <div className="border-t border-gray-700 pt-4">

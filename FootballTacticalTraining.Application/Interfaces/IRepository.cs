@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 
 namespace FootballTacticalTraining.Application.Interfaces;
 
@@ -12,4 +13,5 @@ public interface IRepository<T> where T : class
     Task DeleteAsync(T entity);
     Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null);
     Task<bool> ExistsAsync(Expression<Func<T, bool>> predicate);
+    DbContext GetDbContext();
 }

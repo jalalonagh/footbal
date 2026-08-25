@@ -81,6 +81,36 @@ public class ScenariosController : ControllerBase
         });
     }
 
+    [HttpGet("recent")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetRecent([FromQuery] int count = 3)
+    {
+        var all = await _scenarioService.GetPublicScenariosAsync(1, 100);
+        var recent = all.OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt).Take(count).ToList();
+
+        var result = new List<object>();
+        foreach (var s in recent)
+        {
+            var players = await _scenarioPlayerService.GetByScenarioAsync(s.Id);
+            result.Add(new
+            {
+                s.Id, s.Name, s.Description,
+                Category = s.Category.ToString(),
+                Difficulty = s.Difficulty.ToString(),
+                s.Formation,
+                GamePhase = s.GamePhase.ToString(),
+                s.GameMinute,
+                Players = players.Select(p => new
+                {
+                    p.Id, p.Number, Position = p.Position.ToString(), p.Role,
+                    p.StartX, p.StartY, p.TeamId,
+                    p.Speed, p.HasBall, p.IsTarget
+                })
+            });
+        }
+        return Ok(result);
+    }
+
     [HttpGet("{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetById(Guid id)

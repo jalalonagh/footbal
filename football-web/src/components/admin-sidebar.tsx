@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 const links = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
@@ -12,17 +13,21 @@ const links = [
   { href: "/admin/coupons", label: "Coupons", icon: "🎫" },
   { href: "/admin/articles", label: "Articles", icon: "📝" },
   { href: "/admin/faqs", label: "FAQs", icon: "❓" },
+  { href: "/admin/payment", label: "Payment Settings", icon: "💳", superAdminOnly: true },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
+  const { isSuperAdmin } = useAuth();
+
+  const visibleLinks = links.filter((l) => !l.superAdminOnly || isSuperAdmin);
 
   return (
     <aside className="w-64 bg-gray-800 min-h-screen p-4">
       <div className="text-lg font-bold text-white mb-6 px-3">Admin Panel</div>
       <nav className="space-y-1">
-        {links.map((link) => {
+        {visibleLinks.map((link) => {
           const isActive = pathname === `/${locale}${link.href}` || (link.href !== "/admin" && pathname.startsWith(`/${locale}${link.href}`));
           return (
             <Link

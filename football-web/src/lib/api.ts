@@ -82,6 +82,7 @@ export const api = {
       const qs = p.toString();
       return request<Scenario[]>(`/scenarios${qs ? "?" + qs : ""}`).then(items => ({ items, total: items.length, page: filters?.page || 1, pageSize: filters?.pageSize || 20 }));
     },
+    recent: (count = 3) => request<any[]>(`/scenarios/recent?count=${count}`),
     get: (id: string) => request<Scenario>(`/scenarios/${id}`),
     create: (data: Partial<Scenario>) => request<Scenario>("/scenarios", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Scenario>) => request<Scenario>(`/scenarios/${id}`, { method: "PUT", body: JSON.stringify(data) }),
@@ -181,9 +182,10 @@ export const api = {
 
   // ─── Articles ────────────────────────────────────────
   articles: {
-    list: (page = 1, pageSize = 10, lang?: string) => {
+    list: (page = 1, pageSize = 10, lang?: string, includeUnpublished?: boolean) => {
       const qs = [`page=${page}`, `pageSize=${pageSize}`];
       if (lang) qs.push(`lang=${lang}`);
+      if (includeUnpublished) qs.push(`includeUnpublished=true`);
       return request<{ items: Article[]; total: number }>(`/Articles?${qs.join("&")}`);
     },
     getBySlug: (slug: string, lang?: string) => {
@@ -234,6 +236,16 @@ export const api = {
       const qs = teamId ? `?teamId=${teamId}` : "";
       return request<any[]>(`/statistics/rankings${qs}`);
     },
+  },
+
+  // ─── Payment Settings (SuperAdmin) ──────────────────
+  paymentSettings: {
+    get: () => request<{ isSandbox: boolean }>("/admin/payment-settings"),
+    update: (isSandbox: boolean) =>
+      request<{ isSandbox: boolean; message: string }>("/admin/payment-settings", {
+        method: "PUT",
+        body: JSON.stringify({ isSandbox }),
+      }),
   },
 
   // ─── Tactical ────────────────────────────────────────

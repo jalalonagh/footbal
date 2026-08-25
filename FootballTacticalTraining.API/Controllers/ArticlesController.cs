@@ -2,6 +2,7 @@ using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Domain.Entities.CMS;
 using FootballTacticalTraining.Domain.Enums;
 using FootballTacticalTraining.Infrastructure.Audit;
+using FootballTacticalTraining.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,11 +24,13 @@ public class ArticlesController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GetArticles([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? lang = null)
+    public async Task<IActionResult> GetArticles([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? lang = null, [FromQuery] bool includeUnpublished = false)
     {
         Language? language = ParseLanguage(lang);
-        var articles = await _unitOfWork.Repository<Article>().FindAsync(a => a.IsPublished);
-        var items = articles.OrderByDescending(a => a.PublishedAt).Skip((page - 1) * pageSize).Take(pageSize).Select(a =>
+        var db = (AppDbContext)_unitOfWork.Repository<Article>().GetDbContext();
+        var allArticles = await db.Articles.Include(a => a.Translations).ToListAsync();
+        var filtered = includeUnpublished ? allArticles : allArticles.Where(a => a.IsPublished);
+        var items = filtered.OrderByDescending(a => a.PublishedAt).Skip((page - 1) * pageSize).Take(pageSize).Select(a =>
         {
             var tr = language.HasValue ? a.Translations.FirstOrDefault(t => t.Language == language.Value) : null;
             return new
@@ -38,10 +41,11 @@ public class ArticlesController : ControllerBase
                 Slug = tr?.Slug ?? a.Slug,
                 a.CoverImageUrl,
                 a.ViewCount,
-                a.PublishedAt
+                a.PublishedAt,
+                a.IsPublished
             };
         }).ToList();
-        return Ok(new { items, total = articles.Count() });
+        return Ok(new { items, total = filtered.Count() });
     }
 
     [HttpGet("{slug}")]
@@ -49,20 +53,41 @@ public class ArticlesController : ControllerBase
     public async Task<IActionResult> GetBySlug(string slug, [FromQuery] string? lang = null)
     {
         Language? language = ParseLanguage(lang);
-        var articles = await _unitOfWork.Repository<Article>().FindAsync(a => a.IsPublished);
-        var article = articles.FirstOrDefault(a => a.Slug == slug || a.Translations.Any(t => t.Slug == slug));
+        var db = (AppDbContext)_unitOfWork.Repository<Article>().GetDbContext();
+        var allArticles = await db.Articles.Include(a => a.Translations).Where(a => a.IsPublished).ToListAsync();
+
+        // Find article by base slug or translation slug
+        var article = allArticles.FirstOrDefault(a => a.Slug == slug)
+                      ?? allArticles.FirstOrDefault(a => a.Translations.Any(t => t.Slug == slug));
+
         if (article == null) return NotFound();
+
         article.ViewCount++;
         await _unitOfWork.Repository<Article>().UpdateAsync(article);
         await _unitOfWork.SaveChangesAsync();
-        var tr = language.HasValue ? article.Translations.FirstOrDefault(t => t.Language == language.Value) : null;
+
+        // Smart language resolution:
+        // 1. If lang is requested and translation exists → use translation
+        // 2. If lang is requested but no translation → use base (which may be in another language)
+        // 3. If no lang requested → use base
+        ArticleTranslation? tr = null;
+        if (language.HasValue)
+        {
+            tr = article.Translations.FirstOrDefault(t => t.Language == language.Value);
+        }
+
+        var title = tr?.Title ?? article.Title;
+        var content = tr?.Content ?? article.Content;
+        var summary = tr?.Summary ?? article.Summary;
+        var articleSlug = tr?.Slug ?? article.Slug;
+
         return Ok(new
         {
             article.Id,
-            Title = tr?.Title ?? article.Title,
-            Content = tr?.Content ?? article.Content,
-            Summary = tr?.Summary ?? article.Summary,
-            Slug = tr?.Slug ?? article.Slug,
+            Title = title,
+            Content = content,
+            Summary = summary,
+            Slug = articleSlug,
             article.CoverImageUrl,
             article.CoverImageAlt,
             article.ViewCount,
@@ -103,7 +128,7 @@ public class ArticlesController : ControllerBase
             Title = request.Title,
             Content = request.Content,
             Summary = request.Summary,
-            Slug = request.Slug,
+            Slug = request.Slug ?? request.Title.ToLower().Replace(" ", "-").Replace("'", ""),
             CoverImageUrl = request.CoverImageUrl,
             CoverImageAlt = request.CoverImageAlt,
             MetaTitle = request.MetaTitle,
@@ -136,7 +161,31 @@ public class ArticlesController : ControllerBase
         await _unitOfWork.Repository<Article>().AddAsync(article);
         await _unitOfWork.SaveChangesAsync();
         await _auditService.LogAsync("Create", "Article", article.Id.ToString(), newValue: article.Title, context: HttpContext);
-        return CreatedAtAction(nameof(GetBySlug), new { slug = article.Slug }, article);
+        return Ok(new
+        {
+            article.Id,
+            article.Title,
+            article.Content,
+            article.Summary,
+            article.Slug,
+            article.CoverImageUrl,
+            article.CoverImageAlt,
+            article.MetaTitle,
+            article.MetaDescription,
+            article.FocusKeyword,
+            article.Keywords,
+            article.IsPublished,
+            article.PublishedAt,
+            article.ViewCount,
+            Translations = article.Translations.Select(t => new
+            {
+                Language = t.Language.ToString(),
+                t.Title,
+                t.Content,
+                t.Summary,
+                t.Slug
+            })
+        });
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]

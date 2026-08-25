@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
 
         services.AddHttpClient<IPaymentGateway, ZarinPalPaymentGateway>();
         services.Configure<ZarinPalSettings>(configuration.GetSection("ZarinPal"));
+        services.AddSingleton<PaymentSettingsService>();
 
         services.AddScoped<IAuditService, AuditService>();
 

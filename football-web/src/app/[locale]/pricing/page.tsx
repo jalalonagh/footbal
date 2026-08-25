@@ -39,8 +39,9 @@ export default function PricingPage() {
       } else {
         window.location.href = "/payment/success";
       }
-    } catch {
-      alert(t("paymentError"));
+    } catch (e: any) {
+      const msg = e?.message || t("paymentError");
+      alert(msg);
     }
   };
 
