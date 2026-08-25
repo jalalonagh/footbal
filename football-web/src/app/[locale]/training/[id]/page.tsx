@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import FootballPitch, { PlayerData, BallData, DirectionMode } from "@/components/football-pitch";
 import { api } from "@/lib/api";
 import { Link } from "@/i18n/routing";
+
+const ThreeDView = dynamic(() => import("@/components/three-d-view"), {
+  ssr: false,
+  loading: () => <div className="w-full h-[500px] bg-gray-800 rounded-lg flex items-center justify-center text-white">Loading 3D...</div>,
+});
 
 type FormationEntry = [string, number, number, number];
 
@@ -113,6 +119,7 @@ export default function TrainingPage() {
   const [hasAIAccess, setHasAIAccess] = useState<boolean | null>(null);
   const [playerCount, setPlayerCount] = useState<number>(11);
   const [passMode, setPassMode] = useState(false);
+  const [show3D, setShow3D] = useState(false);
 
   useEffect(() => {
     if (scenarioId) {
@@ -373,6 +380,22 @@ export default function TrainingPage() {
           <h1 className="text-white font-bold text-lg">{scenario?.name || t("session")}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (!show3D && hasAIAccess === false) {
+                alert(t("subscriptionRequired") || "Subscription required for 3D view");
+                return;
+              }
+              setShow3D(!show3D);
+            }}
+            className={`px-3 py-1 rounded text-sm font-semibold transition ${
+              show3D
+                ? "bg-purple-600 text-white hover:bg-purple-700"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+            }`}
+          >
+            {show3D ? "2D" : "3D"}
+          </button>
           <button onClick={() => setZoom((z) => Math.max(1, z - 0.25))} className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm">−</button>
           <span className="text-white text-sm min-w-[50px] text-center">{Math.round(zoom * 100)}%</span>
           <button onClick={() => setZoom((z) => Math.min(2, z + 0.25))} className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm">+</button>
@@ -382,16 +405,37 @@ export default function TrainingPage() {
 
       <div className="relative overflow-auto" style={{ height: "calc(100vh - 56px)" }}>
         <div className="flex justify-center p-4" style={{ transform: `scale(${zoom})`, transformOrigin: "top center", minHeight: isZoomed ? `${100 / zoom}%` : undefined }}>
-          <FootballPitch
-            players={players} ball={ball}
-            selectedPlayerId={selectedPlayerId} directionMode={directionMode}
-            passMode={passMode}
-            onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
-            onPlayerSelect={setSelectedPlayerId}
-            onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
-            onBallClaimed={handleBallClaimed} onPass={handlePass}
-            evaluations={evaluations}
-          />
+          {show3D ? (
+            <Suspense fallback={<div className="w-full h-[500px] bg-gray-800 rounded-lg flex items-center justify-center text-white">Loading 3D...</div>}>
+              <ThreeDView
+                players={players.map((p) => ({
+                  id: p.id,
+                  x: p.x,
+                  y: p.y,
+                  teamId: p.teamId,
+                  number: p.number,
+                  position: p.position,
+                  isGoalkeeper: p.isGoalkeeper,
+                  hasBall: p.hasBall,
+                }))}
+                ball={{ x: ball.x, y: ball.y, holderId: ball.holderId }}
+                selectedPlayerId={selectedPlayerId}
+                width={800}
+                height={500}
+              />
+            </Suspense>
+          ) : (
+            <FootballPitch
+              players={players} ball={ball}
+              selectedPlayerId={selectedPlayerId} directionMode={directionMode}
+              passMode={passMode}
+              onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
+              onPlayerSelect={setSelectedPlayerId}
+              onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
+              onBallClaimed={handleBallClaimed} onPass={handlePass}
+              evaluations={evaluations}
+            />
+          )}
         </div>
 
         {!isZoomed && (

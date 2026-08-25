@@ -1,11 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { api } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import type { Scenario, ScenarioPlayer } from "@/lib/types";
 import FootballPitch, { type DirectionMode, type PlayerData, type BallData, type AISuggestion } from "@/components/football-pitch";
+
+const ThreeDView = dynamic(() => import("@/components/three-d-view"), {
+  ssr: false,
+  loading: () => <div className="w-full h-[500px] bg-gray-800 rounded-lg flex items-center justify-center text-white">Loading 3D...</div>,
+});
 
 function mapPlayers(scenarioPlayers: ScenarioPlayer[]): PlayerData[] {
   return scenarioPlayers.map((sp) => {
@@ -50,6 +56,7 @@ export default function ScenarioDetailPage() {
   const [aiExplanation, setAiExplanation] = useState<string>("");
   const [aiLoading, setAiLoading] = useState(false);
   const [hasAIAccess, setHasAIAccess] = useState<boolean | null>(null);
+  const [show3D, setShow3D] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -198,18 +205,55 @@ export default function ScenarioDetailPage() {
           <span className={`text-xs px-2 py-1 rounded-full text-white ${difficultyColor(scenario.difficulty)}`}>{scenario.difficulty}</span>
           <span className="text-xs px-2 py-1 rounded-full bg-gray-600 text-gray-200">{scenario.category}</span>
         </div>
+        <button
+          onClick={() => {
+            if (!show3D && hasAIAccess === false) {
+              alert(tTr("subscriptionRequired") || "Subscription required for 3D view");
+              return;
+            }
+            setShow3D(!show3D);
+          }}
+          className={`px-3 py-1 rounded text-sm font-semibold transition ${
+            show3D
+              ? "bg-purple-600 text-white hover:bg-purple-700"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+          }`}
+        >
+          {show3D ? "2D" : "3D"}
+        </button>
       </header>
 
       <div className="flex">
         <div className="flex-1 p-4 flex justify-center">
-          <FootballPitch
-            players={players} ball={ball}
-            selectedPlayerId={selectedPlayerId} directionMode={directionMode}
-            onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
-            onPlayerSelect={setSelectedPlayerId}
-            onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
-            onBallClaimed={handleBallClaimed} onPass={handlePass}
-          />
+          {show3D ? (
+            <Suspense fallback={<div className="w-full h-[500px] bg-gray-800 rounded-lg flex items-center justify-center text-white">Loading 3D...</div>}>
+              <ThreeDView
+                players={players.map((p) => ({
+                  id: p.id,
+                  x: p.x,
+                  y: p.y,
+                  teamId: p.teamId,
+                  number: p.number,
+                  position: p.position,
+                  isGoalkeeper: p.isGoalkeeper,
+                  hasBall: p.hasBall,
+                }))}
+                ball={{ x: ball.x, y: ball.y, holderId: ball.holderId }}
+                selectedPlayerId={selectedPlayerId}
+                width={800}
+                height={500}
+              />
+            </Suspense>
+          ) : (
+            <FootballPitch
+              players={players} ball={ball}
+              selectedPlayerId={selectedPlayerId} directionMode={directionMode}
+              onPlayerMove={handlePlayerMove} onBallMove={handleBallMove}
+              onPlayerSelect={setSelectedPlayerId}
+              onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
+              onBallClaimed={handleBallClaimed} onPass={handlePass}
+            />
+          )}
         </div>
 
         <div className="w-80 bg-gray-800 p-4 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-56px)]">

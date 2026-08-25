@@ -216,6 +216,8 @@
     "getAISuggestion": "دریافت پیشنهاد AI",
     "clearAISuggestions": "حذف پیشنهادات",
     "gameInfo": "اطلاعات بازی",
+    "view3D": "نمایش سه بعدی",
+    "view2D": "نمایش دو بعدی",
     "formation": "تشکیل",
     "phase": "فاز بازی",
     "minute": "دقیقه",

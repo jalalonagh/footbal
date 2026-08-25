@@ -216,6 +216,8 @@
     "getAISuggestion": "Get AI Suggestion",
     "clearAISuggestions": "Clear Suggestions",
     "gameInfo": "Game Info",
+    "view3D": "3D View",
+    "view2D": "2D View",
     "formation": "Formation",
     "phase": "Phase",
     "minute": "Minute",
