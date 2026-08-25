@@ -79,6 +79,14 @@ public class AIController : ControllerBase
         return Ok(hasAccess);
     }
 
+    [HttpPost("generate-article")]
+    [Authorize(Roles = "Coach,Admin,SuperAdmin")]
+    public async Task<ActionResult<AIArticleResponse>> GenerateArticle([FromBody] AIArticleRequest request)
+    {
+        var response = await _aiService.GenerateArticleAsync(request);
+        return Ok(response);
+    }
+
     private string? GetUserId()
     {
         var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;

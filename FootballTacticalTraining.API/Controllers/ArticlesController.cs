@@ -64,15 +64,29 @@ public class ArticlesController : ControllerBase
             Summary = tr?.Summary ?? article.Summary,
             Slug = tr?.Slug ?? article.Slug,
             article.CoverImageUrl,
+            article.CoverImageAlt,
             article.ViewCount,
             article.PublishedAt,
+            article.MetaTitle,
+            article.MetaDescription,
+            article.FocusKeyword,
+            article.Keywords,
+            article.CanonicalUrl,
+            article.SchemaJson,
+            article.ReadingTimeMinutes,
+            Excerpt = tr?.Excerpt ?? article.Excerpt,
             Translations = article.Translations.Select(t => new
             {
                 Language = t.Language.ToString(),
                 t.Title,
                 t.Content,
                 t.Summary,
-                t.Slug
+                t.Slug,
+                t.MetaTitle,
+                t.MetaDescription,
+                t.FocusKeyword,
+                t.Keywords,
+                t.Excerpt
             })
         });
     }
@@ -90,7 +104,12 @@ public class ArticlesController : ControllerBase
             Content = request.Content,
             Summary = request.Summary,
             Slug = request.Slug,
-            CoverImageUrl = request.CoverImageUrl
+            CoverImageUrl = request.CoverImageUrl,
+            CoverImageAlt = request.CoverImageAlt,
+            MetaTitle = request.MetaTitle,
+            MetaDescription = request.MetaDescription,
+            FocusKeyword = request.FocusKeyword,
+            Keywords = request.Keywords
         };
 
         if (request.Translations != null)
@@ -148,6 +167,11 @@ public class ArticlesController : ControllerBase
         article.Summary = request.Summary;
         article.Slug = request.Slug;
         article.CoverImageUrl = request.CoverImageUrl;
+        article.CoverImageAlt = request.CoverImageAlt;
+        article.MetaTitle = request.MetaTitle;
+        article.MetaDescription = request.MetaDescription;
+        article.FocusKeyword = request.FocusKeyword;
+        article.Keywords = request.Keywords;
         article.UpdatedAt = DateTime.UtcNow;
 
         if (request.Translations != null)
@@ -155,7 +179,7 @@ public class ArticlesController : ControllerBase
             var existingTranslations = article.Translations.ToList();
             foreach (var et in existingTranslations)
             {
-                _unitOfWork.Repository<ArticleTranslation>().Delete(et);
+                await _unitOfWork.Repository<ArticleTranslation>().DeleteAsync(et);
             }
 
             foreach (var t in request.Translations)
@@ -193,7 +217,7 @@ public class ArticlesController : ControllerBase
         var translations = article.Translations.ToList();
         foreach (var t in translations)
         {
-            _unitOfWork.Repository<ArticleTranslation>().Delete(t);
+            await _unitOfWork.Repository<ArticleTranslation>().DeleteAsync(t);
         }
 
         await _unitOfWork.Repository<Article>().DeleteAsync(article);
@@ -225,6 +249,11 @@ public class CreateArticleRequest
     public string? Summary { get; set; }
     public string? Slug { get; set; }
     public string? CoverImageUrl { get; set; }
+    public string? CoverImageAlt { get; set; }
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public string? FocusKeyword { get; set; }
+    public string? Keywords { get; set; }
     public List<TranslationRequest>? Translations { get; set; }
 }
 
@@ -235,5 +264,10 @@ public class UpdateArticleRequest
     public string? Summary { get; set; }
     public string? Slug { get; set; }
     public string? CoverImageUrl { get; set; }
+    public string? CoverImageAlt { get; set; }
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public string? FocusKeyword { get; set; }
+    public string? Keywords { get; set; }
     public List<TranslationRequest>? Translations { get; set; }
 }

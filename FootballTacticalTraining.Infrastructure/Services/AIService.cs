@@ -176,4 +176,94 @@ public class AIService : IAIService
             }
         };
     }
+
+    public async Task<AIArticleResponse> GenerateArticleAsync(AIArticleRequest request)
+    {
+        var langInstruction = request.Language switch
+        {
+            "Persian" => "Write the ENTIRE response in Persian (Farsi). All content, titles, meta descriptions, and keywords MUST be in Persian.",
+            _ => "Write the ENTIRE response in English. All content, titles, meta descriptions, and keywords MUST be in English."
+        };
+
+        var systemPrompt = $@"You are an expert sports journalist and SEO content writer specializing in football/soccer.
+{langInstruction}
+
+You MUST return ONLY a valid JSON object with NO markdown, NO code fences, NO extra text. The JSON must have this EXACT structure:
+{{
+  ""title"": ""SEO-optimized article title (50-60 characters, includes focus keyword)"",
+  ""content"": ""Full article in HTML format with proper h2/h3 headings, paragraphs, bullet points, and bold text"",
+  ""summary"": ""Compelling meta description style summary (150-160 characters)"",
+  ""slug"": ""url-friendly-slug-with-hyphens"",
+  ""metaTitle"": ""SEO title for search engines (50-60 characters)"",
+  ""metaDescription"": ""Meta description for search engines (150-160 characters, compelling, includes keyword)"",
+  ""focusKeyword"": ""primary SEO keyword"",
+  ""keywords"": ""comma-separated related keywords for meta tags (10-15 keywords)"",
+  ""excerpt"": ""Short engaging excerpt for social media sharing (200 characters)"",
+  ""readingTimeMinutes"": estimated_reading_time_as_integer,
+  ""schemaJson"": ""valid JSON-LD Article schema markup as a string""
+}}
+
+SEO Requirements:
+- Title must be compelling, include the focus keyword near the beginning
+- Content must use proper H2 and H3 headings with keywords naturally placed
+- Use short paragraphs (2-3 sentences) for readability
+- Include bullet points or numbered lists where appropriate
+- Bold important keywords/phrases naturally
+- Internal linking suggestions in content
+- Content must be 100% original, informative, and engaging
+- Keyword density should be natural (1-2%)
+- Include a FAQ section with schema markup
+- Schema must be valid JSON-LD for Article type with author, datePublished, dateModified
+- Content must be structured with proper HTML tags (h2, h3, p, ul, li, strong, blockquote)
+- Reading time: approximately 1 minute per 200 words
+
+Football Content Requirements:
+- Use proper football terminology
+- Reference current tactics, formations, and strategies
+- Include practical tips and actionable advice
+- Reference real-world examples where appropriate
+- Be authoritative and factual";
+
+        var userPrompt = $@"Generate a comprehensive, SEO-optimized football article about: {request.Title}
+
+{(request.Summary != null ? $"Additional context: {request.Summary}" : "")}
+{(request.FocusKeyword != null ? $"Focus keyword: {request.FocusKeyword}" : "")}
+
+Target word count: approximately {request.WordCount} words
+
+Generate the complete article with all SEO fields. Return ONLY the JSON object, nothing else.";
+
+        var responseJson = await ChatAsync(systemPrompt, userPrompt, 0.7m, 4096);
+
+        try
+        {
+            var cleaned = responseJson.Trim();
+            if (cleaned.StartsWith("```json"))
+                cleaned = cleaned[7..];
+            if (cleaned.StartsWith("```"))
+                cleaned = cleaned[3..];
+            if (cleaned.EndsWith("```"))
+                cleaned = cleaned[..^3];
+            cleaned = cleaned.Trim();
+
+            var result = JsonSerializer.Deserialize<AIArticleResponse>(cleaned, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (result != null && !string.IsNullOrEmpty(result.Title))
+                return result;
+        }
+        catch { }
+
+        return new AIArticleResponse
+        {
+            Title = request.Title,
+            Content = responseJson,
+            Summary = request.Summary ?? "",
+            Slug = request.Title.ToLower().Replace(" ", "-").Replace("'", ""),
+            MetaTitle = request.Title,
+            MetaDescription = request.Summary ?? "",
+            FocusKeyword = request.FocusKeyword ?? request.Title,
+            Keywords = request.FocusKeyword ?? "",
+            Excerpt = request.Summary ?? "",
+            ReadingTimeMinutes = request.WordCount / 200
+        };
+    }
 }

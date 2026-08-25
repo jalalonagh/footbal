@@ -201,6 +201,11 @@ export interface ArticleTranslation {
   content: string;
   summary: string;
   slug: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  focusKeyword?: string;
+  keywords?: string;
+  excerpt?: string;
 }
 
 export interface Article {
@@ -210,11 +215,34 @@ export interface Article {
   summary: string;
   slug: string;
   coverImageUrl: string;
+  coverImageAlt?: string;
   viewCount: number;
   isPublished: boolean;
   publishedAt: string;
   createdAt: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  focusKeyword?: string;
+  keywords?: string;
+  canonicalUrl?: string;
+  schemaJson?: string;
+  readingTimeMinutes?: number;
+  excerpt?: string;
   translations?: ArticleTranslation[];
+}
+
+export interface AIArticleResponse {
+  title: string;
+  content: string;
+  summary: string;
+  slug: string;
+  metaTitle: string;
+  metaDescription: string;
+  focusKeyword: string;
+  keywords: string;
+  excerpt: string;
+  readingTimeMinutes: number;
+  schemaJson: string;
 }
 
 export interface Faq {

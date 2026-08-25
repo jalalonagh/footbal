@@ -1,4 +1,4 @@
-import type { AuthResponse, User, Scenario, ScenarioPlayer, ScenarioSolution, ScenarioRule, TrainingSession, TrainingDecision, TrainingPlan, TrainingPlanItem, PlayerProfile, PlayerProgress, PlayerAchievement, Team, Academy, SubscriptionPlan, Subscription, Article, Faq, Discount, Coupon, PlayerStats, CoachStats, AdminStats, PagedResult, GameState } from "./types";
+import type { AuthResponse, User, Scenario, ScenarioPlayer, ScenarioSolution, ScenarioRule, TrainingSession, TrainingDecision, TrainingPlan, TrainingPlanItem, PlayerProfile, PlayerProgress, PlayerAchievement, Team, Academy, SubscriptionPlan, Subscription, Article, AIArticleResponse, Faq, Discount, Coupon, PlayerStats, CoachStats, AdminStats, PagedResult, GameState } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://localhost:7223/api";
 
@@ -190,9 +190,9 @@ export const api = {
       const qs = lang ? `?lang=${lang}` : "";
       return request<Article>(`/Articles/${slug}${qs}`);
     },
-    create: (data: { title: string; content: string; summary?: string; slug?: string; coverImageUrl?: string; translations?: { language: string; title: string; content: string; summary: string; slug: string }[] }) =>
+    create: (data: Record<string, unknown>) =>
       request<Article>("/Articles", { method: "POST", body: JSON.stringify(data) }),
-    update: (id: string, data: { title: string; content: string; summary?: string; slug?: string; coverImageUrl?: string; translations?: { language: string; title: string; content: string; summary: string; slug: string }[] }) =>
+    update: (id: string, data: Record<string, unknown>) =>
       request<void>(`/Articles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/Articles/${id}`, { method: "DELETE" }),
     publish: (id: string) => request<void>(`/Articles/${id}/publish`, { method: "PUT" }),
@@ -310,5 +310,7 @@ export const api = {
       };
     }>("/ai/tactical-suggestion", { method: "POST", body: JSON.stringify(data) }),
     checkAccess: () => request<boolean>("/ai/check-ai-access", { method: "POST" }),
+    generateArticle: (data: { title: string; summary?: string; focusKeyword?: string; language?: string; wordCount?: number }) =>
+      request<AIArticleResponse>("/AI/generate-article", { method: "POST", body: JSON.stringify(data) }),
   },
 };

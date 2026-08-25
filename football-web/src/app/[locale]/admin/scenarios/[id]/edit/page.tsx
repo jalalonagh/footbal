@@ -82,6 +82,7 @@ export default function ScenarioEditorPage() {
             isDefender: p.teamId === 2,
             isGoalkeeper: p.position === "GK",
             position: p.position,
+            role: p.role || "Player",
             direction: null,
             suggestedDirection: null,
             wrongDirection: null,

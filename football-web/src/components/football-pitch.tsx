@@ -13,6 +13,7 @@ export interface PlayerData {
   isDefender: boolean;
   isGoalkeeper: boolean;
   position: string;
+  role?: string;
   direction: { x: number; y: number } | null;
   suggestedDirection: { x: number; y: number } | null;
   wrongDirection: { x: number; y: number } | null;

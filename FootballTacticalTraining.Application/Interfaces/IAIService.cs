@@ -7,6 +7,31 @@ public interface IAIService
     Task<string> GenerateTrainingPlanAsync(string playerLevel, string focusArea);
     Task<string> EvaluatePerformanceAsync(string stats);
     Task<AISuggestionResponse> GetTacticalSuggestionAsync(AITacticalSuggestionRequest request);
+    Task<AIArticleResponse> GenerateArticleAsync(AIArticleRequest request);
+}
+
+public class AIArticleRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Summary { get; set; }
+    public string? FocusKeyword { get; set; }
+    public string Language { get; set; } = "English";
+    public int WordCount { get; set; } = 1500;
+}
+
+public class AIArticleResponse
+{
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public string MetaTitle { get; set; } = string.Empty;
+    public string MetaDescription { get; set; } = string.Empty;
+    public string FocusKeyword { get; set; } = string.Empty;
+    public string Keywords { get; set; } = string.Empty;
+    public string Excerpt { get; set; } = string.Empty;
+    public int ReadingTimeMinutes { get; set; } = 0;
+    public string SchemaJson { get; set; } = "{}";
 }
 
 public class AITacticalSuggestionRequest
