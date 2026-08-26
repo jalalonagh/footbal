@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FootballTacticalTraining.Domain.Entities;
 
 public class PositionVideo : BaseEntity
@@ -12,5 +14,6 @@ public class PositionVideo : BaseEntity
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; } = true;
 
-    public Position Position { get; set; } = null!;
+    [JsonIgnore]
+    public Position? Position { get; set; }
 }

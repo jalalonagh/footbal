@@ -23,6 +23,16 @@ interface Position {
   userPositions?: any[];
 }
 
+interface PositionVideo {
+  id: string;
+  title: string;
+  titleFa?: string;
+  description?: string;
+  descriptionFa?: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+}
+
 const CATEGORY_COLORS: Record<string, string> = {
   Goalkeeper: "bg-yellow-900/50 border-yellow-700",
   Defense: "bg-blue-900/50 border-blue-700",
@@ -46,9 +56,11 @@ export default function PositionDetailPage() {
 
   const [position, setPosition] = useState<Position | null>(null);
   const [myPosition, setMyPosition] = useState<any>(null);
+  const [videos, setVideos] = useState<PositionVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState(false);
   const [message, setMessage] = useState("");
+  const [playingVideo, setPlayingVideo] = useState<PositionVideo | null>(null);
 
   useEffect(() => {
     loadData();
@@ -59,7 +71,14 @@ export default function PositionDetailPage() {
     try {
       const positionData = await api.positions.get(id);
       setPosition(positionData);
-      
+
+      try {
+        const videosData = await api.positionVideos.listByPosition(id);
+        setVideos(videosData);
+      } catch {
+        // Videos endpoint may fail - ignore
+      }
+
       if (user) {
         try {
           const myPositionData = await api.positions.getMyPosition();
@@ -116,6 +135,22 @@ export default function PositionDetailPage() {
   const getRequirements = (pos: Position) => {
     const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
     return lang === 'fa' && pos.requirementsFa ? pos.requirementsFa : pos.requirements;
+  };
+
+  const getVideoTitle = (video: PositionVideo) => {
+    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
+    return lang === 'fa' && video.titleFa ? video.titleFa : video.title;
+  };
+
+  const getVideoDescription = (video: PositionVideo) => {
+    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
+    return lang === 'fa' && video.descriptionFa ? video.descriptionFa : video.description;
+  };
+
+  const getYouTubeEmbedUrl = (url: string) => {
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?#]+)/);
+    if (match) return `https://www.youtube.com/embed/${match[1]}`;
+    return url;
   };
 
   if (loading) {
@@ -187,6 +222,49 @@ export default function PositionDetailPage() {
             </div>
           )}
 
+          {videos.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <span>🎬</span>
+                <span>{t("positions.trainingVideos")}</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {videos.map((video) => (
+                  <div
+                    key={video.id}
+                    onClick={() => setPlayingVideo(video)}
+                    className="bg-gray-700/50 rounded-xl overflow-hidden cursor-pointer group hover:ring-2 hover:ring-green-500 transition-all"
+                  >
+                    <div className="aspect-video bg-gray-900 relative">
+                      {video.thumbnailUrl ? (
+                        <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <svg className="w-16 h-16 text-gray-600 group-hover:text-green-500 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                          </svg>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                        <div className="w-14 h-14 bg-green-600/90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-white mb-1">{getVideoTitle(video)}</h3>
+                      {getVideoDescription(video) && (
+                        <p className="text-gray-400 text-sm line-clamp-2">{getVideoDescription(video)}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {position.userPositions && position.userPositions.length > 0 && (
             <div className="mb-8">
               <h2 className="text-xl font-bold text-white mb-3">{t("positions.playersCount")}</h2>
@@ -219,6 +297,32 @@ export default function PositionDetailPage() {
           </div>
         </div>
       </main>
+
+      {playingVideo && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={() => setPlayingVideo(null)}>
+          <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <div className="aspect-video bg-black rounded-xl overflow-hidden">
+              <iframe
+                src={getYouTubeEmbedUrl(playingVideo.videoUrl)}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="mt-4 text-center">
+              <h3 className="text-xl font-bold text-white mb-2">{getVideoTitle(playingVideo)}</h3>
+              {getVideoDescription(playingVideo) && (
+                <p className="text-gray-400">{getVideoDescription(playingVideo)}</p>
+              )}
+              <button
+                onClick={() => setPlayingVideo(null)}
+                className="mt-4 px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition">
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

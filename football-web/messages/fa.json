@@ -561,6 +561,7 @@
     "isActive": "فعال",
     "usersCount": "تعداد کاربران",
     "myPosition": "موقعیت من",
+    "position": "موقعیت",
     "selectedAt": "انتخاب شده در",
     "changePosition": "تغییر موقعیت",
     "removePosition": "حذف موقعیت",
@@ -572,7 +573,8 @@
     "playersCount": "بازیکنان",
     "playersSelected": "{count} بازیکن این موقعیت را انتخاب کرده‌اند",
     "thisIsYourPosition": "این موقعیت فعلی شماست",
-    "clickToView": "برای مشاهده جزئیات کلیک کنید"
+    "clickToView": "برای مشاهده جزئیات کلیک کنید",
+    "trainingVideos": "ویدیوهای تمرین"
   },
   "common": {
     "cancel": "لغو",

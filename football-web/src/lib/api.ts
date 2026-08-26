@@ -261,6 +261,27 @@ export const api = {
     getAllUserPositions: () => request<any[]>("/Position/all-user-positions"),
   },
 
+  // ─── Position Videos ──────────────────────────────────
+  positionVideos: {
+    listByPosition: (positionId: string) => request<{ id: string; positionId: string; title: string; titleFa?: string; description?: string; descriptionFa?: string; videoUrl: string; thumbnailUrl?: string; displayOrder: number; isActive: boolean }[]>(`/PositionVideo/position/${positionId}`),
+    get: (id: string) => request<any>(`/PositionVideo/${id}`),
+    create: (data: any) => request<any>("/PositionVideo", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: any) => request<any>(`/PositionVideo/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/PositionVideo/${id}`, { method: "DELETE" }),
+    upload: async (file: File) => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`${API_BASE}/PositionVideo/upload`, {
+        method: "POST",
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!response.ok) throw new Error("Upload failed");
+      return response.json() as Promise<{ url: string; fileName: string }>;
+    },
+  },
+
   // ─── Discounts / Coupons ─────────────────────────────
   discounts: {
     list: () => request<Discount[]>("/Discount/discounts"),

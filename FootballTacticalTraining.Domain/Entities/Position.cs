@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FootballTacticalTraining.Domain.Entities;
 
 public class Position : BaseEntity
@@ -14,6 +16,9 @@ public class Position : BaseEntity
     public bool IsActive { get; set; } = true;
     public string? Category { get; set; }
 
+    [JsonIgnore]
     public ICollection<UserPosition> UserPositions { get; set; } = new List<UserPosition>();
+
+    [JsonIgnore]
     public ICollection<PositionVideo> Videos { get; set; } = new List<PositionVideo>();
 }

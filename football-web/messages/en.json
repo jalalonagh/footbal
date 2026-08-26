@@ -561,6 +561,7 @@
     "isActive": "Active",
     "usersCount": "Users",
     "myPosition": "My Position",
+    "position": "Position",
     "selectedAt": "Selected at",
     "changePosition": "Change Position",
     "removePosition": "Remove Position",
@@ -572,7 +573,8 @@
     "playersCount": "Players",
     "playersSelected": "{count} player(s) selected this position",
     "thisIsYourPosition": "This is your current position",
-    "clickToView": "Click to view details"
+    "clickToView": "Click to view details",
+    "trainingVideos": "Training Videos"
   },
   "common": {
     "cancel": "Cancel",

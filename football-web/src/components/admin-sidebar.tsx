@@ -10,6 +10,7 @@ const links = [
   { href: "/admin/plans", label: "Plans & Pricing", icon: "💰" },
   { href: "/admin/scenarios", label: "Scenarios", icon: "⚽" },
   { href: "/admin/positions", label: "Positions", icon: "🎯" },
+  { href: "/admin/position-videos", label: "Position Videos", icon: "🎬" },
   { href: "/admin/discounts", label: "Discounts", icon: "🏷️" },
   { href: "/admin/coupons", label: "Coupons", icon: "🎫" },
   { href: "/admin/articles", label: "Articles", icon: "📝" },
