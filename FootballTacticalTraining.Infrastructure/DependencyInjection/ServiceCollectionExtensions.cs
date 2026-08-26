@@ -47,6 +47,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.AddScoped<IDiscountService, DiscountService>();
+        services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<ITicketService, TicketService>();
+        services.AddScoped<IPositionService, PositionService>();
 
         services.AddHttpClient<IAIService, AIService>();
         services.Configure<AISettings>(configuration.GetSection("AI"));

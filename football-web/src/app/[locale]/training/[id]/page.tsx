@@ -159,7 +159,7 @@ export default function TrainingPage() {
   }, [scenarioId]);
 
   useEffect(() => {
-    api.ai.checkAccess().then(setHasAIAccess).catch(() => setHasAIAccess(false));
+    setHasAIAccess(true);
   }, []);
 
   const handlePlayerMove = useCallback((id: string, x: number, y: number) => {
@@ -249,10 +249,6 @@ export default function TrainingPage() {
 
   const handleAISuggestion = useCallback(async () => {
     if (!selectedPlayerId) return;
-    if (hasAIAccess === false) {
-      alert(t("subscriptionRequired") || "Subscription required for AI features");
-      return;
-    }
     setAiLoading(true);
     try {
       const ballHolder = ball.holderId ? players.find((p) => p.id === ball.holderId) : null;
@@ -300,11 +296,6 @@ export default function TrainingPage() {
     if (!selectedPlayerId) return;
     const selectedPlayer = players.find((p) => p.id === selectedPlayerId);
     if (!selectedPlayer) return;
-    if (hasAIAccess === null) return;
-    if (hasAIAccess === false) {
-      alert(t("subscriptionRequired") || "Subscription required for AI features");
-      return;
-    }
     if (evaluations[selectedPlayerId]) return;
 
     setEvaluating(true);
@@ -381,13 +372,7 @@ export default function TrainingPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => {
-              if (!show3D && hasAIAccess === false) {
-                alert(t("subscriptionRequired") || "Subscription required for 3D view");
-                return;
-              }
-              setShow3D(!show3D);
-            }}
+            onClick={() => setShow3D(!show3D)}
             className={`px-3 py-1 rounded text-sm font-semibold transition ${
               show3D
                 ? "bg-purple-600 text-white hover:bg-purple-700"
@@ -488,12 +473,6 @@ export default function TrainingPage() {
               {passMode ? (t("passModeOn") || "⚽ Pass Mode ON") : (t("passModeOff") || "⚽ Pass Mode OFF")}
             </button>
             <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
-            {hasAIAccess !== false && (
-              <button onClick={handleAISuggestion} disabled={aiLoading || !selectedPlayerId} className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-1 text-sm disabled:opacity-50">
-                {aiLoading ? "..." : (t("getAISuggestion") || "Get AI Suggestion")}
-              </button>
-            )}
-            <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
             <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear Directions"}</button>
           </div>
 
@@ -596,22 +575,21 @@ export default function TrainingPage() {
             <h3 className="text-white font-bold mb-2">{t("evaluateDecision") || "Evaluate Decision"}</h3>
             {!selectedPlayerId ? (
               <p className="text-gray-400 text-xs">{t("selectPlayerForEval") || "Select a player to evaluate"}</p>
-            ) : hasAIAccess === false ? (
-              <div className="text-center">
-                <p className="text-yellow-400 text-xs mb-2">{t("subscriptionRequired") || "Subscription required"}</p>
-                <Link href="/pricing" className="w-full py-1.5 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 inline-block">
-                  {t("upgrade") || "Upgrade"}
-                </Link>
-              </div>
-            ) : evaluations[selectedPlayerId] ? (
-              <p className="text-green-400 text-xs">{t("alreadyEvaluated") || "Already evaluated"}</p>
             ) : (
-              <button
-                onClick={handleEvaluate}
-                disabled={evaluating}
-                className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm disabled:opacity-50">
-                {evaluating ? (t("analyzing") || "Analyzing...") : (t("evaluatePlayer") || "Evaluate Player Position")}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAISuggestion}
+                  disabled={aiLoading || !selectedPlayerId}
+                  className="flex-1 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs disabled:opacity-50">
+                  {aiLoading ? "..." : (t("getAISuggestion") || "AI Suggestion")}
+                </button>
+                <button
+                  onClick={handleEvaluate}
+                  disabled={evaluating || evaluations[selectedPlayerId] !== undefined}
+                  className="flex-1 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs disabled:opacity-50">
+                  {evaluating ? "..." : evaluations[selectedPlayerId] ? (t("alreadyEvaluated") || "Done") : (t("evaluatePlayer") || "Evaluate")}
+                </button>
+              </div>
             )}
             {Object.keys(evaluations).length > 0 && (
               <button onClick={handleClearEvaluations}
@@ -721,12 +699,6 @@ export default function TrainingPage() {
                 {passMode ? (t("passModeOn") || "⚽ Pass Mode ON") : (t("passModeOff") || "⚽ Pass Mode OFF")}
               </button>
               <button onClick={handleResetPositions} className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mb-1 text-sm">{t("resetPositions") || "Reset Positions"}</button>
-              {hasAIAccess !== false && (
-                <button onClick={handleAISuggestion} disabled={aiLoading || !selectedPlayerId} className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-1 text-sm disabled:opacity-50">
-                  {aiLoading ? "..." : (t("getAISuggestion") || "Get AI Suggestion")}
-                </button>
-              )}
-              <button onClick={handleEvaluate} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 mb-1 text-sm">{t("evaluateDecision")}</button>
               <button onClick={handleClearDirections} className="w-full py-2 bg-gray-600 text-white rounded hover:bg-gray-500 text-sm">{t("clearDirections") || "Clear"}</button>
             </div>
 
@@ -771,13 +743,6 @@ export default function TrainingPage() {
               </div>
               {!selectedPlayerId ? (
                 <p className="text-gray-400 text-xs">{t("selectPlayerForAI") || "Select a player"}</p>
-              ) : hasAIAccess === false ? (
-                <div className="text-center">
-                  <p className="text-yellow-400 text-xs mb-2">{t("subscriptionRequired") || "Subscription required"}</p>
-                  <Link href="/pricing" className="w-full py-1.5 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 inline-block">
-                    {t("upgrade") || "Upgrade"}
-                  </Link>
-                </div>
               ) : (
                 <>
                   <button onClick={handleAISuggestion} disabled={aiLoading} className="w-full py-2 bg-purple-600 text-white rounded hover:bg-purple-700 mb-2 text-sm disabled:opacity-50">

@@ -68,6 +68,12 @@ export const api = {
       request<{ items: User[]; total: number }>(`/auth/users?page=${page}&pageSize=${pageSize}`),
     updateRole: (userId: string, role: string) =>
       request<void>(`/auth/users/${userId}/role`, { method: "PUT", body: JSON.stringify(role) }),
+    getDevices: () =>
+      request<{ id: string; deviceInfo: string; ipAddress?: string; lastActiveAt: string; createdAt: string }[]>("/auth/devices"),
+    removeDevice: (id: string) =>
+      request<{ message: string }>(`/auth/devices/${id}`, { method: "DELETE" }),
+    logoutAllDevices: () =>
+      request<{ message: string }>("/auth/devices/logout-all", { method: "POST" }),
   },
 
   // ─── Scenarios ───────────────────────────────────────
@@ -209,6 +215,50 @@ export const api = {
     create: (data: Partial<Faq>) => request<Faq>("/Faqs", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Faq>) => request<void>(`/Faqs/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/Faqs/${id}`, { method: "DELETE" }),
+  },
+
+  // ─── Contact ─────────────────────────────────────────
+  contact: {
+    getSettings: () => request<{ mobilePhone?: string; officePhone?: string; email?: string; fax?: string; address?: string; instagram?: string; twitter?: string; facebook?: string; telegram?: string; whatsapp?: string; linkedIn?: string; youTube?: string }>("/Contact/settings"),
+    updateSettings: (data: Record<string, unknown>) =>
+      request<void>("/Contact/settings", { method: "PUT", body: JSON.stringify(data) }),
+  },
+
+  // ─── Tickets ─────────────────────────────────────────
+  tickets: {
+    list: (page = 1, pageSize = 20) =>
+      request<{ id: string; userId: string; subject: string; status: string; priority: string; createdAt: string; messageCount: number }[]>(`/Ticket?page=${page}&pageSize=${pageSize}`),
+    listAll: (page = 1, pageSize = 20, status?: string) => {
+      const qs = [`page=${page}`, `pageSize=${pageSize}`];
+      if (status) qs.push(`status=${status}`);
+      return request<{ id: string; userId: string; subject: string; status: string; priority: string; createdAt: string; messageCount: number }[]>(`/Ticket/admin?${qs.join("&")}`);
+    },
+    get: (id: string) =>
+      request<{ id: string; userId: string; subject: string; status: string; priority: string }>(`/Ticket/${id}`),
+    create: (subject: string) =>
+      request<{ id: string; subject: string; status: string }>("/Ticket", { method: "POST", body: JSON.stringify({ subject }) }),
+    getMessages: (id: string) =>
+      request<{ id: string; senderId: string; message: string; isFromAdmin: boolean; createdAt: string }[]>(`/Ticket/${id}/messages`),
+    sendMessage: (id: string, message: string) =>
+      request<{ id: string; message: string; isFromAdmin: boolean; createdAt: string }>(`/Ticket/${id}/messages`, { method: "POST", body: JSON.stringify({ message }) }),
+    updateStatus: (id: string, status: string) =>
+      request<void>(`/Ticket/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
+  },
+
+  // ─── Positions ──────────────────────────────────────
+  positions: {
+    list: (includeInactive = false) => {
+      const qs = includeInactive ? "?includeInactive=true" : "";
+      return request<{ id: string; code: string; name: string; nameFa?: string; description?: string; descriptionFa?: string; requirements?: string; requirementsFa?: string; iconUrl?: string; displayOrder: number; isActive: boolean; category?: string }[]>(`/Position${qs}`);
+    },
+    get: (id: string) => request<any>(`/Position/${id}`),
+    create: (data: any) => request<any>("/Position", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: any) => request<any>(`/Position/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/Position/${id}`, { method: "DELETE" }),
+    getMyPosition: () => request<{ id: string; userId: string; positionId: string; position: any; selectedAt: string } | null>("/Position/my-position"),
+    selectPosition: (positionId: string) => request<any>("/Position/select", { method: "POST", body: JSON.stringify({ positionId }) }),
+    removeMyPosition: () => request<void>("/Position/my-position", { method: "DELETE" }),
+    getAllUserPositions: () => request<any[]>("/Position/all-user-positions"),
   },
 
   // ─── Discounts / Coupons ─────────────────────────────

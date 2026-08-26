@@ -176,6 +176,15 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Devices */}
+        <div className="bg-gray-800 rounded-xl p-8 mb-8">
+          <h2 className="text-2xl font-bold mb-4">{t("devices") || "Devices"}</h2>
+          <p className="text-gray-400 text-sm mb-4">{t("devicesDesc") || "Manage your active devices and sessions."}</p>
+          <Link href="/profile/devices" className="inline-block px-6 py-2 bg-blue-600 rounded-lg font-semibold hover:bg-blue-700 transition">
+            {t("manageDevices") || "Manage Devices"}
+          </Link>
+        </div>
+
         {/* Sign Out */}
         <div className="bg-gray-800 rounded-xl p-8">
           <h2 className="text-2xl font-bold mb-6">{t("settings")}</h2>

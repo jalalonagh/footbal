@@ -31,16 +31,16 @@ interface ThreeDViewProps {
   height?: number;
 }
 
-const FIELD_WIDTH = 100;
-const FIELD_HEIGHT = 65;
-const SCALE = 0.5;
+const FIELD_SIZE = 100;
+const SCALE_X = 0.5;
+const SCALE_Y = 0.325;
 
 function toWorldX(x: number): number {
-  return (x - FIELD_WIDTH / 2) * SCALE;
+  return (x - FIELD_SIZE / 2) * SCALE_X;
 }
 
 function toWorldZ(y: number): number {
-  return (y - FIELD_HEIGHT / 2) * SCALE;
+  return (y - FIELD_SIZE / 2) * SCALE_Y;
 }
 
 function Stickman({ player, isSelected }: { player: Player3D; isSelected: boolean }) {
@@ -53,7 +53,7 @@ function Stickman({ player, isSelected }: { player: Player3D; isSelected: boolea
     : (player.isGoalkeeper ? "#dc2626" : "#ef4444");
 
   return (
-    <group ref={groupRef} position={[worldX, 0, worldZ]}>
+    <group ref={groupRef} position={[worldX, 0, worldZ]} rotation={[0, Math.PI / 2, 0]}>
       {/* Head */}
       <mesh position={[0, 2.4, 0]}>
         <sphereGeometry args={[0.38, 10, 10]} />
@@ -99,6 +99,7 @@ function Stickman({ player, isSelected }: { player: Player3D; isSelected: boolea
         anchorY="middle"
         outlineWidth={0.05}
         outlineColor="black"
+        rotation={[0, -Math.PI / 2, 0]}
       >
         {player.number}
       </Text>
@@ -112,6 +113,7 @@ function Stickman({ player, isSelected }: { player: Player3D; isSelected: boolea
         anchorY="middle"
         outlineWidth={0.03}
         outlineColor="black"
+        rotation={[0, -Math.PI / 2, 0]}
       >
         {player.position}
       </Text>
@@ -130,17 +132,97 @@ function Stickman({ player, isSelected }: { player: Player3D; isSelected: boolea
 function Ball({ ball }: { ball: Ball3D }) {
   const worldX = toWorldX(ball.x);
   const worldZ = toWorldZ(ball.y);
+  const ballRef = useRef<THREE.Mesh>(null);
+
+  const footballTexture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 512, 512);
+
+    const drawPentagon = (cx: number, cy: number, r: number) => {
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fill();
+      ctx.strokeStyle = "#333333";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    };
+
+    const drawHexagon = (cx: number, cy: number, r: number) => {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * 2 * Math.PI) / 6;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = "#cccccc";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    };
+
+    drawPentagon(256, 256, 60);
+    drawPentagon(128, 128, 45);
+    drawPentagon(384, 128, 45);
+    drawPentagon(128, 384, 45);
+    drawPentagon(384, 384, 45);
+
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI) / 3;
+      const x = 256 + 130 * Math.cos(angle);
+      const y = 256 + 130 * Math.sin(angle);
+      drawHexagon(x, y, 40);
+    }
+
+    drawHexagon(256, 100, 35);
+    drawHexagon(256, 412, 35);
+    drawHexagon(100, 256, 35);
+    drawHexagon(412, 256, 35);
+
+    ctx.strokeStyle = "#999999";
+    ctx.lineWidth = 2;
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    return texture;
+  }, []);
 
   return (
-    <group position={[worldX, 0.2, worldZ]}>
-      <mesh>
-        <sphereGeometry args={[0.2, 12, 12]} />
-        <meshStandardMaterial color="white" />
+    <group position={[worldX, 0.25, worldZ]}>
+      <mesh ref={ballRef} castShadow>
+        <sphereGeometry args={[0.22, 32, 32]} />
+        <meshStandardMaterial
+          map={footballTexture}
+          roughness={0.3}
+          metalness={0.1}
+          envMapIntensity={0.5}
+        />
       </mesh>
-      <mesh>
-        <sphereGeometry args={[0.21, 12, 12]} />
-        <meshStandardMaterial color="#333" wireframe />
+      <mesh castShadow>
+        <sphereGeometry args={[0.225, 16, 16]} />
+        <meshStandardMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.15}
+          roughness={0.1}
+        />
       </mesh>
+      <pointLight color="#ffffff" intensity={0.3} distance={2} />
     </group>
   );
 }
@@ -180,8 +262,8 @@ function Field() {
     const elements: React.ReactNode[] = [];
 
     // Field outline
-    const fieldW = FIELD_WIDTH * SCALE;
-    const fieldH = FIELD_HEIGHT * SCALE;
+    const fieldW = FIELD_SIZE * SCALE_X;
+    const fieldH = FIELD_SIZE * SCALE_Y;
     const halfW = fieldW / 2;
     const halfH = fieldH / 2;
 
@@ -196,7 +278,7 @@ function Field() {
     // Center circle
     elements.push(
       <mesh key="center-circle" position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[5 * SCALE - 0.05, 5 * SCALE, 32]} />
+        <ringGeometry args={[5 * SCALE_X - 0.05, 5 * SCALE_X, 32]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
@@ -211,41 +293,41 @@ function Field() {
 
     // Penalty areas (left)
     elements.push(
-      <mesh key="penalty-left" position={[-halfW + 8 * SCALE, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh key="penalty-left" position={[-halfW + 8 * SCALE_X, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0, 0, 0]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
 
     // Goal areas - simplified as lines
-    const penaltyW = 16 * SCALE;
-    const penaltyH = 30 * SCALE;
-    const goalW = 6 * SCALE;
-    const goalH = 14 * SCALE;
+    const penaltyW = 16 * SCALE_X;
+    const penaltyH = 30 * SCALE_X;
+    const goalW = 6 * SCALE_X;
+    const goalH = 14 * SCALE_X;
 
     // Left penalty area outline
     const leftPenaltyPoints = [
-      new THREE.Vector3(-halfW + 8 * SCALE, 0.02, -penaltyH / 2),
-      new THREE.Vector3(-halfW + 8 * SCALE, 0.02, penaltyH / 2),
+      new THREE.Vector3(-halfW + 8 * SCALE_X, 0.02, -penaltyH / 2),
+      new THREE.Vector3(-halfW + 8 * SCALE_X, 0.02, penaltyH / 2),
     ];
 
     // Right penalty area outline
     const rightPenaltyPoints = [
-      new THREE.Vector3(halfW - 8 * SCALE, 0.02, -penaltyH / 2),
-      new THREE.Vector3(halfW - 8 * SCALE, 0.02, penaltyH / 2),
+      new THREE.Vector3(halfW - 8 * SCALE_X, 0.02, -penaltyH / 2),
+      new THREE.Vector3(halfW - 8 * SCALE_X, 0.02, penaltyH / 2),
     ];
 
     // Penalty area boxes - using thin boxes as lines
     // Left penalty area
     elements.push(
-      <mesh key="left-penalty-top" position={[-halfW + 4 * SCALE, 0.02, -penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[8 * SCALE, 0.1]} />
+      <mesh key="left-penalty-top" position={[-halfW + 4 * SCALE_X, 0.02, -penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[8 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
     elements.push(
-      <mesh key="left-penalty-bottom" position={[-halfW + 4 * SCALE, 0.02, penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[8 * SCALE, 0.1]} />
+      <mesh key="left-penalty-bottom" position={[-halfW + 4 * SCALE_X, 0.02, penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[8 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
@@ -256,7 +338,7 @@ function Field() {
       </mesh>
     );
     elements.push(
-      <mesh key="left-penalty-right" position={[-halfW + 8 * SCALE, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+      <mesh key="left-penalty-right" position={[-halfW + 8 * SCALE_X, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
         <planeGeometry args={[penaltyH, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
@@ -264,19 +346,19 @@ function Field() {
 
     // Right penalty area
     elements.push(
-      <mesh key="right-penalty-top" position={[halfW - 4 * SCALE, 0.02, -penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[8 * SCALE, 0.1]} />
+      <mesh key="right-penalty-top" position={[halfW - 4 * SCALE_X, 0.02, -penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[8 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
     elements.push(
-      <mesh key="right-penalty-bottom" position={[halfW - 4 * SCALE, 0.02, penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[8 * SCALE, 0.1]} />
+      <mesh key="right-penalty-bottom" position={[halfW - 4 * SCALE_X, 0.02, penaltyH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[8 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
     elements.push(
-      <mesh key="right-penalty-left" position={[halfW - 8 * SCALE, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+      <mesh key="right-penalty-left" position={[halfW - 8 * SCALE_X, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
         <planeGeometry args={[penaltyH, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
@@ -290,14 +372,14 @@ function Field() {
 
     // Goal areas
     elements.push(
-      <mesh key="left-goal-top" position={[-halfW + 3 * SCALE, 0.02, -goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[3 * SCALE, 0.1]} />
+      <mesh key="left-goal-top" position={[-halfW + 3 * SCALE_X, 0.02, -goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
     elements.push(
-      <mesh key="left-goal-bottom" position={[-halfW + 3 * SCALE, 0.02, goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[3 * SCALE, 0.1]} />
+      <mesh key="left-goal-bottom" position={[-halfW + 3 * SCALE_X, 0.02, goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
@@ -308,26 +390,26 @@ function Field() {
       </mesh>
     );
     elements.push(
-      <mesh key="left-goal-right" position={[-halfW + 3 * SCALE, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+      <mesh key="left-goal-right" position={[-halfW + 3 * SCALE_X, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
         <planeGeometry args={[goalH, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
 
     elements.push(
-      <mesh key="right-goal-top" position={[halfW - 3 * SCALE, 0.02, -goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[3 * SCALE, 0.1]} />
+      <mesh key="right-goal-top" position={[halfW - 3 * SCALE_X, 0.02, -goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
     elements.push(
-      <mesh key="right-goal-bottom" position={[halfW - 3 * SCALE, 0.02, goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[3 * SCALE, 0.1]} />
+      <mesh key="right-goal-bottom" position={[halfW - 3 * SCALE_X, 0.02, goalH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3 * SCALE_X, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
     );
     elements.push(
-      <mesh key="right-goal-left" position={[halfW - 3 * SCALE, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+      <mesh key="right-goal-left" position={[halfW - 3 * SCALE_X, 0.02, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
         <planeGeometry args={[goalH, 0.1]} />
         <meshStandardMaterial color="white" />
       </mesh>
@@ -372,7 +454,7 @@ function Field() {
     <group>
       {/* Grass */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[FIELD_WIDTH * SCALE, FIELD_HEIGHT * SCALE]} />
+        <planeGeometry args={[FIELD_SIZE * SCALE_X, FIELD_SIZE * SCALE_Y]} />
         <meshStandardMaterial color="#3a9d5e" />
       </mesh>
 
@@ -380,10 +462,10 @@ function Field() {
       {Array.from({ length: 10 }).map((_, i) => (
         <mesh
           key={`stripe-${i}`}
-          position={[-(FIELD_WIDTH * SCALE) / 2 + (i * FIELD_WIDTH * SCALE) / 10 + (FIELD_WIDTH * SCALE) / 20, 0.01, 0]}
+          position={[-(FIELD_SIZE * SCALE_X) / 2 + (i * FIELD_SIZE * SCALE_X) / 10 + (FIELD_SIZE * SCALE_X) / 20, 0.01, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
         >
-          <planeGeometry args={[(FIELD_WIDTH * SCALE) / 10, FIELD_HEIGHT * SCALE]} />
+          <planeGeometry args={[(FIELD_SIZE * SCALE_X) / 10, FIELD_SIZE * SCALE_Y]} />
           <meshStandardMaterial color={i % 2 === 0 ? "#3a9d5e" : "#45b36d"} transparent opacity={0.6} />
         </mesh>
       ))}
@@ -392,15 +474,15 @@ function Field() {
       {lines}
 
       {/* Goals */}
-      <Goal position={[-(FIELD_WIDTH * SCALE) / 2 - 0.5, 0, 0]} rotation={Math.PI / 2} />
-      <Goal position={[(FIELD_WIDTH * SCALE) / 2 + 0.5, 0, 0]} rotation={-Math.PI / 2} />
+      <Goal position={[-(FIELD_SIZE * SCALE_X) / 2 - 0.5, 0, 0]} rotation={Math.PI / 2} />
+      <Goal position={[(FIELD_SIZE * SCALE_X) / 2 + 0.5, 0, 0]} rotation={-Math.PI / 2} />
     </group>
   );
 }
 
 function Stadium() {
-  const fieldW = FIELD_WIDTH * SCALE;
-  const fieldH = FIELD_HEIGHT * SCALE;
+  const fieldW = FIELD_SIZE * SCALE_X;
+  const fieldH = FIELD_SIZE * SCALE_Y;
 
   return (
     <group>

@@ -47,11 +47,16 @@ public class AppDbContext : DbContext
     public DbSet<ArticleTag> ArticleTags => Set<ArticleTag>();
     public DbSet<ArticleTranslation> ArticleTranslations => Set<ArticleTranslation>();
     public DbSet<Faq> Faqs => Set<Faq>();
+    public DbSet<ContactSetting> ContactSettings => Set<ContactSetting>();
+    public DbSet<Ticket> Tickets => Set<Ticket>();
+    public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
     public DbSet<Discount> Discounts => Set<Discount>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<TacticalRule> TacticalRules => Set<TacticalRule>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<UserDevice> UserDevices => Set<UserDevice>();
+    public DbSet<UserPosition> UserPositions => Set<UserPosition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -170,6 +175,43 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Decision>(e =>
         {
             e.HasOne(d => d.TrainingSession).WithMany(s => s.Decisions).HasForeignKey(d => d.TrainingSessionId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Ticket>(e =>
+        {
+            e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<TicketMessage>(e =>
+        {
+            e.HasOne(m => m.Ticket).WithMany(t => t.Messages).HasForeignKey(m => m.TicketId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<UserDevice>(e =>
+        {
+            e.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<RefreshToken>(e =>
+        {
+            e.HasOne(r => r.Device).WithMany(d => d.RefreshTokens).HasForeignKey(r => r.DeviceId).OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Position>(e =>
+        {
+            e.Property(p => p.Code).HasMaxLength(20);
+            e.Property(p => p.Name).HasMaxLength(100);
+            e.Property(p => p.NameFa).HasMaxLength(100);
+            e.Property(p => p.Category).HasMaxLength(50);
+            e.HasIndex(p => p.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<UserPosition>(e =>
+        {
+            e.HasOne(up => up.User).WithMany().HasForeignKey(up => up.UserId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(up => up.Position).WithMany(p => p.UserPositions).HasForeignKey(up => up.PositionId).OnDelete(DeleteBehavior.NoAction);
+            e.HasIndex(up => new { up.UserId, up.PositionId }).IsUnique();
         });
     }
 

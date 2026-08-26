@@ -4,6 +4,7 @@ using FootballTacticalTraining.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,13 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FootballTacticalTraining.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260826064737_AddContactAndTickets_v2")]
+    partial class AddContactAndTickets_v2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "9.0.19")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -344,51 +347,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.Auth.UserDevice", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DeviceInfo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<DateTime>("LastActiveAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserDevices");
                 });
 
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.CMS.Article", b =>
@@ -1348,13 +1306,11 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Category")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1367,14 +1323,8 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("DescriptionFa")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
-
-                    b.Property<string>("IconUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -1386,17 +1336,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NameFa")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Requirements")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RequirementsFa")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1406,9 +1345,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
 
                     b.ToTable("Positions");
                 });
@@ -1426,9 +1362,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("DeviceId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("datetime2");
@@ -1461,8 +1394,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DeviceId");
 
                     b.HasIndex("UserId");
 
@@ -2728,53 +2659,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                     b.ToTable("UserAchievements");
                 });
 
-            modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.UserPosition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<Guid>("PositionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("SelectedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PositionId");
-
-                    b.HasIndex("UserId", "PositionId")
-                        .IsUnique();
-
-                    b.ToTable("UserPositions");
-                });
-
             modelBuilder.Entity("ArticleTag", b =>
                 {
                     b.HasOne("FootballTacticalTraining.Domain.Entities.CMS.Article", null)
@@ -2817,17 +2701,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                     b.HasOne("FootballTacticalTraining.Domain.Entities.Academy", null)
                         .WithMany("Users")
                         .HasForeignKey("AcademyId");
-                });
-
-            modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.Auth.UserDevice", b =>
-                {
-                    b.HasOne("FootballTacticalTraining.Domain.Entities.Auth.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.CMS.Article", b =>
@@ -2978,18 +2851,11 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
 
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.RefreshToken", b =>
                 {
-                    b.HasOne("FootballTacticalTraining.Domain.Entities.Auth.UserDevice", "Device")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("DeviceId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("FootballTacticalTraining.Domain.Entities.Auth.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Device");
 
                     b.Navigation("User");
                 });
@@ -3279,25 +3145,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.UserPosition", b =>
-                {
-                    b.HasOne("FootballTacticalTraining.Domain.Entities.Position", "Position")
-                        .WithMany("UserPositions")
-                        .HasForeignKey("PositionId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("FootballTacticalTraining.Domain.Entities.Auth.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Position");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.Academy", b =>
                 {
                     b.Navigation("Teams");
@@ -3330,11 +3177,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
                     b.Navigation("Subscriptions");
                 });
 
-            modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.Auth.UserDevice", b =>
-                {
-                    b.Navigation("RefreshTokens");
-                });
-
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.CMS.Article", b =>
                 {
                     b.Navigation("ArticleTags");
@@ -3359,11 +3201,6 @@ namespace FootballTacticalTraining.Infrastructure.Migrations
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.CMS.Ticket", b =>
                 {
                     b.Navigation("Messages");
-                });
-
-            modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.Position", b =>
-                {
-                    b.Navigation("UserPositions");
                 });
 
             modelBuilder.Entity("FootballTacticalTraining.Domain.Entities.Scenario", b =>

@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Domain.Entities;
+using FootballTacticalTraining.Domain.Entities.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -11,6 +12,7 @@ namespace FootballTacticalTraining.Application.Services;
 
 public class AuthService : IAuthService
 {
+    private const int MaxDevices = 2;
     private readonly IConfiguration _configuration;
     private readonly IUnitOfWork _unitOfWork;
 
@@ -44,8 +46,38 @@ public class AuthService : IAuthService
         return await Task.FromResult(new JwtSecurityTokenHandler().WriteToken(token));
     }
 
-    public async Task<string> GenerateRefreshTokenAsync(Guid userId)
+    public async Task<string> GenerateRefreshTokenAsync(Guid userId, string deviceInfo, string? ipAddress)
     {
+        var existingDevices = (await _unitOfWork.Repository<UserDevice>()
+            .FindAsync(d => d.UserId == userId && !d.IsDeleted))
+            .ToList();
+
+        var existingDevice = existingDevices.FirstOrDefault(d => d.DeviceInfo == deviceInfo);
+
+        if (existingDevice == null)
+        {
+            if (existingDevices.Count >= MaxDevices)
+            {
+                throw new InvalidOperationException("Device limit reached. Please logout from another device first.");
+            }
+
+            existingDevice = new UserDevice
+            {
+                UserId = userId,
+                DeviceInfo = deviceInfo,
+                IpAddress = ipAddress,
+                LastActiveAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Repository<UserDevice>().AddAsync(existingDevice);
+            await _unitOfWork.SaveChangesAsync();
+        }
+        else
+        {
+            existingDevice.LastActiveAt = DateTime.UtcNow;
+            existingDevice.IpAddress = ipAddress;
+            await _unitOfWork.Repository<UserDevice>().UpdateAsync(existingDevice);
+        }
+
         var tokenBytes = new byte[64];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(tokenBytes);
@@ -54,6 +86,7 @@ public class AuthService : IAuthService
         var entity = new RefreshToken
         {
             UserId = userId,
+            DeviceId = existingDevice.Id,
             Token = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             IsRevoked = false
@@ -85,6 +118,61 @@ public class AuthService : IAuthService
             refreshToken.ReplacedByToken = replacedByToken;
             await _unitOfWork.Repository<RefreshToken>().UpdateAsync(refreshToken);
             await _unitOfWork.SaveChangesAsync();
+        }
+    }
+
+    public async Task<int> GetActiveDeviceCountAsync(Guid userId)
+    {
+        var devices = await _unitOfWork.Repository<UserDevice>()
+            .FindAsync(d => d.UserId == userId && !d.IsDeleted);
+        return devices.Count();
+    }
+
+    public async Task<bool> CanAddDeviceAsync(Guid userId)
+    {
+        var count = await GetActiveDeviceCountAsync(userId);
+        return count < MaxDevices;
+    }
+
+    public async Task<List<UserDevice>> GetUserDevicesAsync(Guid userId)
+    {
+        var devices = (await _unitOfWork.Repository<UserDevice>()
+            .FindAsync(d => d.UserId == userId && !d.IsDeleted))
+            .OrderByDescending(d => d.LastActiveAt)
+            .ToList();
+        return devices;
+    }
+
+    public async Task RevokeDeviceAsync(Guid deviceId)
+    {
+        var device = await _unitOfWork.Repository<UserDevice>().GetByIdAsync(deviceId);
+        if (device == null) return;
+
+        var refreshTokens = (await _unitOfWork.Repository<RefreshToken>()
+            .FindAsync(t => t.DeviceId == deviceId && !t.IsRevoked))
+            .ToList();
+
+        foreach (var token in refreshTokens)
+        {
+            token.IsRevoked = true;
+            token.RevokedAt = DateTime.UtcNow;
+            await _unitOfWork.Repository<RefreshToken>().UpdateAsync(token);
+        }
+
+        device.IsDeleted = true;
+        await _unitOfWork.Repository<UserDevice>().UpdateAsync(device);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task RevokeAllDevicesExceptCurrentAsync(Guid userId, Guid currentDeviceId)
+    {
+        var devices = (await _unitOfWork.Repository<UserDevice>()
+            .FindAsync(d => d.UserId == userId && d.Id != currentDeviceId && !d.IsDeleted))
+            .ToList();
+
+        foreach (var device in devices)
+        {
+            await RevokeDeviceAsync(device.Id);
         }
     }
 

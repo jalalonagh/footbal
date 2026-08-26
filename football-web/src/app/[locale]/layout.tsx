@@ -3,6 +3,7 @@ import "../globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import Providers from "@/components/providers";
+import FloatingPositionBadge from "@/components/floating-position-badge";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -27,7 +28,10 @@ export default async function RootLayout({ children, params }: { children: React
       </head>
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider messages={messages}>
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+            <FloatingPositionBadge />
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

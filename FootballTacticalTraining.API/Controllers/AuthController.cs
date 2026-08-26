@@ -1,36 +1,50 @@
+using System.Security.Claims;
 using FootballTacticalTraining.Application.DTOs.Auth;
 using FootballTacticalTraining.Application.Interfaces;
+using FootballTacticalTraining.Domain.Entities;
 using FootballTacticalTraining.Domain.Entities.Auth;
 using FootballTacticalTraining.Domain.Enums;
+using FootballTacticalTraining.Infrastructure.Data;
 using FootballTacticalTraining.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace FootballTacticalTraining.API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
+[ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthService _authService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuthService _authService;
     private readonly IAuditService _auditService;
     private readonly IEmailService _emailService;
 
-    public AuthController(IAuthService authService, IUnitOfWork unitOfWork, IAuditService auditService, IEmailService emailService)
+    public AuthController(IUnitOfWork unitOfWork, IAuthService authService, IAuditService auditService, IEmailService emailService)
     {
-        _authService = authService;
         _unitOfWork = unitOfWork;
+        _authService = authService;
         _auditService = auditService;
         _emailService = emailService;
+    }
+
+    private string GetDeviceInfo()
+    {
+        var userAgent = Request.Headers.UserAgent.ToString();
+        return string.IsNullOrEmpty(userAgent) ? "Unknown Device" : userAgent;
+    }
+
+    private string? GetIpAddress()
+    {
+        return Request.Headers["X-Forwarded-For"].FirstOrDefault()
+            ?? HttpContext.Connection.RemoteIpAddress?.ToString();
     }
 
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto dto)
     {
-        var existingUser = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == dto.Email);
-        if (existingUser.Any()) return BadRequest("Email already registered");
+        var existing = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == dto.Email);
+        if (existing.Any()) return Conflict("Email already exists");
 
         var role = UserRole.Player;
         if (!string.IsNullOrEmpty(dto.Role) && Enum.TryParse<UserRole>(dto.Role, true, out var parsed))
@@ -54,7 +68,7 @@ public class AuthController : ControllerBase
         try { await _emailService.SendWelcomeEmailAsync(user.Email, user.FirstName); } catch { }
 
         var token = await _authService.GenerateJwtTokenAsync(user.Id, user.Email, user.Role.ToString());
-        var refreshToken = await _authService.GenerateRefreshTokenAsync(user.Id);
+        var refreshToken = await _authService.GenerateRefreshTokenAsync(user.Id, GetDeviceInfo(), GetIpAddress());
         return Ok(new AuthResponseDto(token, refreshToken, user.Email, user.Role.ToString(), user.Id, $"{user.FirstName} {user.LastName}"));
     }
 
@@ -66,6 +80,13 @@ public class AuthController : ControllerBase
         if (user == null || !await _authService.VerifyPasswordAsync(dto.Password, user.PasswordHash))
             return Unauthorized("Invalid credentials");
 
+        var deviceInfo = GetDeviceInfo();
+        var canAdd = await _authService.CanAddDeviceAsync(user.Id);
+        if (!canAdd)
+        {
+            return Conflict(new { error = "Device limit reached", message = "You are logged in on 2 devices. Please logout from one device first." });
+        }
+
         user.LastLoginAt = DateTime.UtcNow;
         await _unitOfWork.Repository<User>().UpdateAsync(user);
         await _unitOfWork.SaveChangesAsync();
@@ -73,7 +94,7 @@ public class AuthController : ControllerBase
         await _auditService.LogAsync("Login", "User", user.Id.ToString(), null, user.Email, HttpContext);
 
         var token = await _authService.GenerateJwtTokenAsync(user.Id, user.Email, user.Role.ToString());
-        var refreshToken = await _authService.GenerateRefreshTokenAsync(user.Id);
+        var refreshToken = await _authService.GenerateRefreshTokenAsync(user.Id, deviceInfo, GetIpAddress());
         return Ok(new AuthResponseDto(token, refreshToken, user.Email, user.Role.ToString(), user.Id, $"{user.FirstName} {user.LastName}"));
     }
 
@@ -135,15 +156,14 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
     {
-        var users = await _unitOfWork.Repository<User>()
-            .FindAsync(u => u.PasswordResetToken == dto.Token && u.Email == dto.Email);
+        var users = await _unitOfWork.Repository<User>().FindAsync(u => u.PasswordResetToken == dto.Token && u.PasswordResetTokenExpiry > DateTime.UtcNow);
         var user = users.FirstOrDefault();
-        if (user == null || user.PasswordResetTokenExpiry == null || user.PasswordResetTokenExpiry < DateTime.UtcNow)
-            return BadRequest("Invalid or expired reset token");
+        if (user == null) return BadRequest("Invalid or expired reset token");
 
         user.PasswordHash = await _authService.HashPasswordAsync(dto.NewPassword);
         user.PasswordResetToken = null;
         user.PasswordResetTokenExpiry = null;
+        user.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.Repository<User>().UpdateAsync(user);
         await _unitOfWork.SaveChangesAsync();
 
@@ -151,51 +171,20 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("me")]
-    public async Task<IActionResult> GetCurrentUser()
-    {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
-        if (user == null) return NotFound();
-        return Ok(new
-        {
-            user.Id, user.Email, user.FirstName, user.LastName,
-            Role = user.Role.ToString(), user.IsActive, user.CreatedAt
-        });
-    }
-
-    [Authorize]
-    [HttpPut("me")]
-    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
-    {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
-        if (user == null) return NotFound();
-
-        if (!string.IsNullOrEmpty(dto.FirstName)) user.FirstName = dto.FirstName;
-        if (!string.IsNullOrEmpty(dto.LastName)) user.LastName = dto.LastName;
-        if (!string.IsNullOrEmpty(dto.PhoneNumber)) user.PhoneNumber = dto.PhoneNumber;
-        user.UpdatedAt = DateTime.UtcNow;
-        await _unitOfWork.Repository<User>().UpdateAsync(user);
-        await _unitOfWork.SaveChangesAsync();
-
-        await _auditService.LogAsync("UpdateProfile", "User", userId.ToString(), null, $"{user.FirstName} {user.LastName}", HttpContext);
-
-        return Ok(new { user.Id, user.Email, user.FirstName, user.LastName, user.PhoneNumber });
-    }
-
-    [Authorize]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
     {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-        var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId == null) return Unauthorized();
+
+        var user = await _unitOfWork.Repository<User>().GetByIdAsync(Guid.Parse(userId));
         if (user == null) return NotFound();
 
         if (!await _authService.VerifyPasswordAsync(dto.CurrentPassword, user.PasswordHash))
             return BadRequest("Current password is incorrect");
 
         user.PasswordHash = await _authService.HashPasswordAsync(dto.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.Repository<User>().UpdateAsync(user);
         await _unitOfWork.SaveChangesAsync();
 
@@ -214,9 +203,57 @@ public class AuthController : ControllerBase
         await _authService.RevokeRefreshTokenAsync(dto.RefreshToken);
 
         var newToken = await _authService.GenerateJwtTokenAsync(user.Id, user.Email, user.Role.ToString());
-        var newRefreshToken = await _authService.GenerateRefreshTokenAsync(user.Id);
+        var newRefreshToken = await _authService.GenerateRefreshTokenAsync(user.Id, GetDeviceInfo(), GetIpAddress());
 
         return Ok(new AuthResponseDto(newToken, newRefreshToken, user.Email, user.Role.ToString(), user.Id, $"{user.FirstName} {user.LastName}"));
+    }
+
+    [Authorize]
+    [HttpGet("devices")]
+    public async Task<IActionResult> GetDevices()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId == null) return Unauthorized();
+
+        var devices = await _authService.GetUserDevicesAsync(Guid.Parse(userId));
+        return Ok(devices.Select(d => new
+        {
+            d.Id,
+            d.DeviceInfo,
+            d.IpAddress,
+            d.LastActiveAt,
+            d.CreatedAt
+        }));
+    }
+
+    [Authorize]
+    [HttpDelete("devices/{id}")]
+    public async Task<IActionResult> RemoveDevice(Guid id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId == null) return Unauthorized();
+
+        var devices = await _authService.GetUserDevicesAsync(Guid.Parse(userId));
+        var device = devices.FirstOrDefault(d => d.Id == id);
+        if (device == null) return NotFound();
+
+        await _authService.RevokeDeviceAsync(id);
+        return Ok(new { message = "Device removed successfully" });
+    }
+
+    [Authorize]
+    [HttpPost("devices/logout-all")]
+    public async Task<IActionResult> LogoutAllDevices()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId == null) return Unauthorized();
+
+        var devices = await _authService.GetUserDevicesAsync(Guid.Parse(userId));
+        foreach (var device in devices)
+        {
+            await _authService.RevokeDeviceAsync(device.Id);
+        }
+        return Ok(new { message = "All devices logged out" });
     }
 
     [HttpPost("setup-admin")]
@@ -227,19 +264,16 @@ public class AuthController : ControllerBase
         if (user == null) return NotFound("User not found");
 
         if (!await _authService.VerifyPasswordAsync(dto.Password, user.PasswordHash))
-            return Unauthorized("Invalid password");
+            return Unauthorized("Invalid credentials");
 
-        var hasAdmin = await _unitOfWork.Repository<User>().FindAsync(u => u.Role == UserRole.SuperAdmin || u.Role == UserRole.Admin);
-        if (hasAdmin.Any() && user.Role != UserRole.SuperAdmin)
-            return BadRequest("An admin already exists. Only SuperAdmin can promote users.");
+        if (user.Role != UserRole.SuperAdmin)
+            return Unauthorized("Only SuperAdmin can setup admin");
 
-        user.Role = UserRole.SuperAdmin;
+        user.Role = UserRole.Admin;
         user.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.Repository<User>().UpdateAsync(user);
         await _unitOfWork.SaveChangesAsync();
 
-        var token = await _authService.GenerateJwtTokenAsync(user.Id, user.Email, user.Role.ToString());
-        var refreshToken = await _authService.GenerateRefreshTokenAsync(user.Id);
-        return Ok(new AuthResponseDto(token, refreshToken, user.Email, user.Role.ToString(), user.Id, $"{user.FirstName} {user.LastName}"));
+        return Ok(new { message = "Admin setup complete" });
     }
 }

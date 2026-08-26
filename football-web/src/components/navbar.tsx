@@ -22,6 +22,9 @@ export default function Navbar() {
           <Link href="/scenarios" className="text-gray-300 hover:text-white transition text-sm">
             {t("scenarios")}
           </Link>
+          <Link href="/positions" className="text-gray-300 hover:text-white transition text-sm">
+            {t("positions")}
+          </Link>
           {isAuthenticated && (
             <Link href="/dashboard" className="text-gray-300 hover:text-white transition text-sm">
               {t("dashboard")}
@@ -35,8 +38,8 @@ export default function Navbar() {
           <Link href="/articles" className="text-gray-300 hover:text-white transition text-sm">
             {t("articles")}
           </Link>
-          <Link href="/faq" className="text-gray-300 hover:text-white transition text-sm">
-            {t("faq")}
+          <Link href="/contact" className="text-gray-300 hover:text-white transition text-sm">
+            {t("contact")}
           </Link>
           <Link href="/pricing" className="text-gray-300 hover:text-white transition text-sm">
             {t("pricing")}

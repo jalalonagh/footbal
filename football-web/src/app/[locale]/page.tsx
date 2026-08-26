@@ -154,6 +154,49 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Free Features Highlight */}
+      <section className="max-w-6xl mx-auto px-6 pb-20">
+        <div className="bg-gradient-to-r from-green-600/30 to-blue-600/30 backdrop-blur-sm rounded-2xl p-8 md:p-12">
+          <div className="text-center mb-10">
+            <span className="inline-block px-4 py-2 bg-green-500 text-white text-sm font-bold rounded-full mb-4 shadow-lg">FREE</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">{t("freeFeaturesTitle")}</h2>
+            <p className="text-green-100 text-lg max-w-2xl mx-auto">{t("freeFeaturesDesc")}</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center hover:bg-white/20 transition">
+              <div className="w-16 h-16 bg-green-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">⚽</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">{t("freeTrainingTitle")}</h3>
+              <p className="text-green-200 text-sm mb-4">{t("freeTrainingDesc")}</p>
+              <Link href="/scenarios" className="inline-block px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition">
+                {t("startTraining")}
+              </Link>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center hover:bg-white/20 transition">
+              <div className="w-16 h-16 bg-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🎮</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">{t("free3DTitle")}</h3>
+              <p className="text-green-200 text-sm mb-4">{t("free3DDesc")}</p>
+              <Link href="/scenarios" className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition">
+                {t("try3D")}
+              </Link>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center hover:bg-white/20 transition">
+              <div className="w-16 h-16 bg-purple-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🤖</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">{t("freeAITitle")}</h3>
+              <p className="text-green-200 text-sm mb-4">{t("freeAIDesc")}</p>
+              <Link href="/scenarios" className="inline-block px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition">
+                {t("tryAI")}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="max-w-6xl mx-auto px-6 pb-20">
         <h2 className="text-3xl font-bold text-white text-center mb-12">{t("features")}</h2>

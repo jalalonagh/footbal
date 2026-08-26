@@ -70,7 +70,7 @@ export default function ScenarioDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    api.ai.checkAccess().then(setHasAIAccess).catch(() => setHasAIAccess(false));
+    setHasAIAccess(true);
   }, []);
 
   const handlePlayerMove = useCallback((playerId: string, x: number, y: number) => {
@@ -206,13 +206,7 @@ export default function ScenarioDetailPage() {
           <span className="text-xs px-2 py-1 rounded-full bg-gray-600 text-gray-200">{scenario.category}</span>
         </div>
         <button
-          onClick={() => {
-            if (!show3D && hasAIAccess === false) {
-              alert(tTr("subscriptionRequired") || "Subscription required for 3D view");
-              return;
-            }
-            setShow3D(!show3D);
-          }}
+          onClick={() => setShow3D(!show3D)}
           className={`px-3 py-1 rounded text-sm font-semibold transition ${
             show3D
               ? "bg-purple-600 text-white hover:bg-purple-700"
@@ -313,13 +307,6 @@ export default function ScenarioDetailPage() {
             <h3 className="text-white font-bold mb-2">{tTr("aiSuggestion")}</h3>
             {!selectedPlayerId ? (
               <p className="text-gray-400 text-xs">{tTr("selectPlayerForAI")}</p>
-            ) : hasAIAccess === false ? (
-              <div className="text-center">
-                <p className="text-yellow-400 text-xs mb-2">{tTr("subscriptionRequired")}</p>
-                <button className="w-full py-1.5 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700">
-                  {tTr("upgrade")}
-                </button>
-              </div>
             ) : (
               <>
                 <button

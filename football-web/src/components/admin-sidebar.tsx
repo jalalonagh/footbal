@@ -9,10 +9,12 @@ const links = [
   { href: "/admin/users", label: "Users", icon: "👥" },
   { href: "/admin/plans", label: "Plans & Pricing", icon: "💰" },
   { href: "/admin/scenarios", label: "Scenarios", icon: "⚽" },
+  { href: "/admin/positions", label: "Positions", icon: "🎯" },
   { href: "/admin/discounts", label: "Discounts", icon: "🏷️" },
   { href: "/admin/coupons", label: "Coupons", icon: "🎫" },
   { href: "/admin/articles", label: "Articles", icon: "📝" },
-  { href: "/admin/faqs", label: "FAQs", icon: "❓" },
+  { href: "/admin/contact", label: "Contact Settings", icon: "📞" },
+  { href: "/tickets", label: "Tickets", icon: "🎫" },
   { href: "/admin/payment", label: "Payment Settings", icon: "💳", superAdminOnly: true },
 ];
 
