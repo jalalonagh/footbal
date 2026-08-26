@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 
 interface Position {
@@ -49,6 +49,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export default function PositionDetailPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
@@ -123,28 +124,23 @@ export default function PositionDetailPage() {
   };
 
   const getPositionName = (pos: Position) => {
-    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
-    return lang === 'fa' && pos.nameFa ? pos.nameFa : pos.name;
+    return locale === 'fa' && pos.nameFa ? pos.nameFa : pos.name;
   };
 
   const getDescription = (pos: Position) => {
-    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
-    return lang === 'fa' && pos.descriptionFa ? pos.descriptionFa : pos.description;
+    return locale === 'fa' && pos.descriptionFa ? pos.descriptionFa : pos.description;
   };
 
   const getRequirements = (pos: Position) => {
-    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
-    return lang === 'fa' && pos.requirementsFa ? pos.requirementsFa : pos.requirements;
+    return locale === 'fa' && pos.requirementsFa ? pos.requirementsFa : pos.requirements;
   };
 
   const getVideoTitle = (video: PositionVideo) => {
-    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
-    return lang === 'fa' && video.titleFa ? video.titleFa : video.title;
+    return locale === 'fa' && video.titleFa ? video.titleFa : video.title;
   };
 
   const getVideoDescription = (video: PositionVideo) => {
-    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
-    return lang === 'fa' && video.descriptionFa ? video.descriptionFa : video.description;
+    return locale === 'fa' && video.descriptionFa ? video.descriptionFa : video.description;
   };
 
   const getYouTubeEmbedUrl = (url: string) => {

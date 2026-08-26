@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface Position {
   id: string;
@@ -39,6 +39,7 @@ const EMPTY_FORM: Partial<PositionVideo> = {
 
 export default function AdminPositionVideos() {
   const t = useTranslations();
+  const locale = useLocale();
   const { isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -157,7 +158,7 @@ export default function AdminPositionVideos() {
   };
 
   const getPositionName = (p: Position) => {
-    if (typeof navigator !== "undefined" && navigator.language.startsWith("fa") && p.nameFa) return p.nameFa;
+    if (locale === "fa" && p.nameFa) return p.nameFa;
     return p.name;
   };
 

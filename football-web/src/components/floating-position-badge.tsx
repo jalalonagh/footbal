@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 
@@ -28,6 +28,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function FloatingPositionBadge() {
   const t = useTranslations();
+  const locale = useLocale();
   const { user } = useAuth();
   const [myPosition, setMyPosition] = useState<UserPosition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,8 +70,7 @@ export default function FloatingPositionBadge() {
   if (loading || !user || !myPosition) return null;
 
   const getPositionName = () => {
-    const lang = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'en';
-    return lang === 'fa' && myPosition.position.nameFa ? myPosition.position.nameFa : myPosition.position.name;
+    return locale === 'fa' && myPosition.position.nameFa ? myPosition.position.nameFa : myPosition.position.name;
   };
 
   const categoryColor = CATEGORY_COLORS[myPosition.position.category || ""] || "bg-green-600";

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/routing";
 
 interface Position {
@@ -46,6 +46,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export default function PositionsPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const { user } = useAuth();
   const router = useRouter();
   const [positions, setPositions] = useState<Position[]>([]);
@@ -103,21 +104,21 @@ export default function PositionsPage() {
   };
 
   const getPositionName = (position: Position) => {
-    if (typeof navigator !== "undefined" && navigator.language.startsWith("fa") && position.nameFa) {
+    if (locale === "fa" && position.nameFa) {
       return position.nameFa;
     }
     return position.name;
   };
 
   const getDescription = (position: Position) => {
-    if (typeof navigator !== "undefined" && navigator.language.startsWith("fa") && position.descriptionFa) {
+    if (locale === "fa" && position.descriptionFa) {
       return position.descriptionFa;
     }
     return position.description;
   };
 
   const getRequirements = (position: Position) => {
-    if (typeof navigator !== "undefined" && navigator.language.startsWith("fa") && position.requirementsFa) {
+    if (locale === "fa" && position.requirementsFa) {
       return position.requirementsFa;
     }
     return position.requirements;
