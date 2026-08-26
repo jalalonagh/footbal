@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import FootballPitch, { PlayerData, BallData, DirectionMode } from "@/components/football-pitch";
 import { api } from "@/lib/api";
 import { Link } from "@/i18n/routing";
+import AnimatedPassBall from "@/components/animated-pass-ball";
 
 const ThreeDView = dynamic(() => import("@/components/three-d-view"), {
   ssr: false,
@@ -115,6 +116,19 @@ export default function TrainingPage() {
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  const [passSimulation, setPassSimulation] = useState<{
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number;
+    targetPlayerNumber: number;
+    targetPlayerName: string;
+    passType: string;
+    reason: string;
+    trajectory: string;
+  } | null>(null);
+  const [passSimulating, setPassSimulating] = useState(false);
 
   const [hasAIAccess, setHasAIAccess] = useState<boolean | null>(null);
   const [playerCount, setPlayerCount] = useState<number>(11);
@@ -287,6 +301,43 @@ export default function TrainingPage() {
     setAiExplanation(null);
   }, []);
 
+  const handleSimulatePass = useCallback(async () => {
+    if (!ball.holderId) return;
+    const ballHolder = players.find((p) => p.id === ball.holderId);
+    if (!ballHolder) return;
+    setPassSimulating(true);
+    try {
+      const response = await api.ai.simulatePass({
+        ballHolderId: ballHolder.id,
+        ballHolderNumber: ballHolder.number,
+        ballHolderPosition: ballHolder.position,
+        ballHolderX: ballHolder.x,
+        ballHolderY: ballHolder.y,
+        teamId: ballHolder.teamId,
+        allPlayers: players.map((p) => ({
+          id: p.id, position: p.position, teamId: p.teamId,
+          x: p.x, y: p.y, number: p.number,
+          isGoalkeeper: p.isGoalkeeper, hasBall: p.hasBall,
+        })),
+        scenarioContext: scenario?.description,
+      });
+      setPassSimulation({
+        fromX: ballHolder.x,
+        fromY: ballHolder.y,
+        toX: response.targetX,
+        toY: response.targetY,
+        targetPlayerNumber: response.targetPlayerNumber,
+        targetPlayerName: response.targetPlayerName,
+        passType: response.passType,
+        reason: response.reason,
+        trajectory: response.trajectory,
+      });
+    } catch (err: any) {
+      console.error("Pass simulation failed", err);
+    }
+    setPassSimulating(false);
+  }, [ball.holderId, players, scenario]);
+
   const handleClearDirections = useCallback(() => {
     setPlayers((prev) => prev.map((p) => ({ ...p, direction: null, suggestedDirection: null, wrongDirection: null })));
     setBall((b) => ({ ...b, direction: null, suggestedDirection: null, wrongDirection: null }));
@@ -419,6 +470,11 @@ export default function TrainingPage() {
               onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
               onBallClaimed={handleBallClaimed} onPass={handlePass}
               evaluations={evaluations}
+              aiSuggestions={aiSuggestions}
+              showAISuggestions={showAISuggestions}
+              passSimulation={passSimulation}
+              onPassSimulationComplete={() => setPassSimulation(null)}
+              onPassSimulationDismiss={() => setPassSimulation(null)}
             />
           )}
         </div>
@@ -591,11 +647,32 @@ export default function TrainingPage() {
                 </button>
               </div>
             )}
-            {Object.keys(evaluations).length > 0 && (
-              <button onClick={handleClearEvaluations}
-                className="w-full mt-2 py-1.5 bg-red-600/80 text-white rounded hover:bg-red-700 text-xs">
-                {t("clearEvaluations") || "Clear All Evaluations"}
-              </button>
+          </div>
+
+          <div className="bg-gray-700 rounded-lg p-3">
+            <h3 className="text-white font-bold mb-2">{t("passSimulation") || "Pass Simulation"}</h3>
+            {!ball.holderId ? (
+              <p className="text-gray-400 text-xs">{t("noBallHolder") || "Drag ball to a player first"}</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-400">
+                  {t("simulatePassDesc") || "AI will find best pass target and animate ball trajectory"}
+                </p>
+                <button
+                  onClick={handleSimulatePass}
+                  disabled={passSimulating}
+                  className="w-full py-2 bg-amber-600 text-white rounded hover:bg-amber-700 text-xs disabled:opacity-50">
+                  {passSimulating ? "..." : (t("simulatePass") || "Simulate Pass")}
+                </button>
+                {passSimulation && (
+                  <div className="bg-gray-600 rounded p-2">
+                    <p className="text-xs text-gray-300">
+                      <span className="text-amber-400">#{passSimulation.targetPlayerNumber}</span> — {passSimulation.passType}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">{passSimulation.reason}</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -635,6 +712,10 @@ export default function TrainingPage() {
                   );
                 })}
               </div>
+              <button onClick={handleClearEvaluations}
+                className="w-full mt-2 py-1.5 bg-red-600/80 text-white rounded hover:bg-red-700 text-xs">
+                {t("clearEvaluations") || "Clear All Evaluations"}
+              </button>
             </div>
           )}
 

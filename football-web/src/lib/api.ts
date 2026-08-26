@@ -255,7 +255,7 @@ export const api = {
     create: (data: any) => request<any>("/Position", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: any) => request<any>(`/Position/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/Position/${id}`, { method: "DELETE" }),
-    getMyPosition: () => request<{ id: string; userId: string; positionId: string; position: any; selectedAt: string } | null>("/Position/my-position"),
+    getMyPosition: () => request<{ id: string; userId: string; positionId: string; selectedAt: string; position: { id: string; code: string; name: string; nameFa?: string; description?: string; descriptionFa?: string; requirements?: string; requirementsFa?: string; iconUrl?: string; category?: string } } | null>("/Position/my-position"),
     selectPosition: (positionId: string) => request<any>("/Position/select", { method: "POST", body: JSON.stringify({ positionId }) }),
     removeMyPosition: () => request<void>("/Position/my-position", { method: "DELETE" }),
     getAllUserPositions: () => request<any[]>("/Position/all-user-positions"),
@@ -372,6 +372,34 @@ export const api = {
       };
     }>("/ai/tactical-suggestion", { method: "POST", body: JSON.stringify(data) }),
     checkAccess: () => request<boolean>("/ai/check-ai-access", { method: "POST" }),
+    simulatePass: (data: {
+      ballHolderId: string;
+      ballHolderNumber: number;
+      ballHolderPosition: string;
+      ballHolderX: number;
+      ballHolderY: number;
+      teamId: number;
+      allPlayers: Array<{
+        id: string;
+        position: string;
+        teamId: number;
+        x: number;
+        y: number;
+        number: number;
+        isGoalkeeper: boolean;
+        hasBall: boolean;
+      }>;
+      scenarioContext?: string;
+    }) => request<{
+      targetPlayerId: string;
+      targetPlayerName: string;
+      targetPlayerNumber: number;
+      targetX: number;
+      targetY: number;
+      passType: string;
+      reason: string;
+      trajectory: string;
+    }>("/ai/simulate-pass", { method: "POST", body: JSON.stringify(data) }),
     generateArticle: (data: { title: string; summary?: string; focusKeyword?: string; language?: string; wordCount?: number }) =>
       request<AIArticleResponse>("/AI/generate-article", { method: "POST", body: JSON.stringify(data) }),
   },

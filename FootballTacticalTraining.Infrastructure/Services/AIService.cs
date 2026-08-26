@@ -177,6 +177,71 @@ public class AIService : IAIService
         };
     }
 
+    public async Task<PassSimulationResponse> SimulatePassAsync(PassSimulationRequest request)
+    {
+        var teammates = request.AllPlayers.Where(p => p.TeamId == request.TeamId && p.Id != request.BallHolderId).ToList();
+        var teammatesJson = JsonSerializer.Serialize(teammates, new JsonSerializerOptions { WriteIndented = false });
+
+        var systemPrompt = @"تو یک مربی فوتبال حرفه‌ای هستی. بهترین بازیکن برای پاس را انتخاب کن.
+پاسخ را به صورت JSON معتبر برگردان با این ساختار:
+{
+  ""targetPlayerId"": ""id بازیکن هدف"",
+  ""targetPlayerName"": ""نام بازیکن هدف"",
+  ""targetPlayerNumber"": شماره بازیکن هدف,
+  ""targetX"": عدد (موقعیت X بازیکن هدف),
+  ""targetY"": عدد (موقعیت Y بازیکن هدف),
+  ""passType"": ""نوع پاس (short/long/through/chip)"",
+  ""reason"": ""دلیل انتخاب این بازیکن به فارسی"",
+  ""trajectory"": ""نوع مسیر توپ (straight/curved/through)""
+}
+
+نکات مهم:
+- موقعیت زمین: X از 0 (چپ) تا 100 (راست)، Y از 0 (بالا) تا 100 (پایین)
+- دروازه حریف در سمت راست (X=100) است
+- بهترین گزینه برای پاس را انتخاب کن (موقعیت مناسب، فاصله مناسب، عدم پوشش توسط حریف)
+- اگر بازیکنی در موقعیت گل‌زنی است، او را انتخاب کن
+- پاسخ حتماً باید JSON معتبر باشد";
+
+        var ballHolderInfo = $"صاحب توپ: شماره {request.BallHolderNumber} ({request.BallHolderPosition}) در موقعیت ({request.BallHolderX:F0}, {request.BallHolderY:F0})";
+
+        var userPrompt = $@"موقعیت فعلی بازی:
+
+{ballHolderInfo}
+
+بازیکنان تیمی:
+{teammatesJson}
+
+لطفاً بهترین بازیکن برای پاس را انتخاب کن.";
+
+        var responseJson = await ChatAsync(systemPrompt, userPrompt, 0.3m, 1024);
+
+        try
+        {
+            var cleaned = responseJson.Trim();
+            if (cleaned.StartsWith("```json")) cleaned = cleaned[7..];
+            if (cleaned.StartsWith("```")) cleaned = cleaned[3..];
+            if (cleaned.EndsWith("```")) cleaned = cleaned[..^3];
+            cleaned = cleaned.Trim();
+
+            var result = JsonSerializer.Deserialize<PassSimulationResponse>(cleaned, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (result != null) return result;
+        }
+        catch { }
+
+        var fallback = teammates.FirstOrDefault();
+        return new PassSimulationResponse
+        {
+            TargetPlayerId = fallback?.Id ?? "",
+            TargetPlayerName = fallback?.Position ?? "Teammate",
+            TargetPlayerNumber = fallback?.Number ?? 0,
+            TargetX = fallback?.X ?? 50,
+            TargetY = fallback?.Y ?? 50,
+            PassType = "short",
+            Reason = "پاس کوتاه به نزدیک‌ترین هم‌تیمی",
+            Trajectory = "straight"
+        };
+    }
+
     public async Task<AIArticleResponse> GenerateArticleAsync(AIArticleRequest request)
     {
         var langInstruction = request.Language switch

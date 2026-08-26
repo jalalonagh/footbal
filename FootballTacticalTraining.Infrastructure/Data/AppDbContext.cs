@@ -57,6 +57,7 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
     public DbSet<UserPosition> UserPositions => Set<UserPosition>();
+    public DbSet<PositionVideo> PositionVideos => Set<PositionVideo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -212,6 +213,13 @@ public class AppDbContext : DbContext
             e.HasOne(up => up.User).WithMany().HasForeignKey(up => up.UserId).OnDelete(DeleteBehavior.NoAction);
             e.HasOne(up => up.Position).WithMany(p => p.UserPositions).HasForeignKey(up => up.PositionId).OnDelete(DeleteBehavior.NoAction);
             e.HasIndex(up => new { up.UserId, up.PositionId }).IsUnique();
+        });
+
+        modelBuilder.Entity<PositionVideo>(e =>
+        {
+            e.HasOne(pv => pv.Position).WithMany(p => p.Videos).HasForeignKey(pv => pv.PositionId).OnDelete(DeleteBehavior.NoAction);
+            e.Property(pv => pv.VideoUrl).HasMaxLength(2048);
+            e.Property(pv => pv.ThumbnailUrl).HasMaxLength(2048);
         });
     }
 

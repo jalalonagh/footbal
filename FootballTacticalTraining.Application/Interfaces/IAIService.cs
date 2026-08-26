@@ -7,6 +7,7 @@ public interface IAIService
     Task<string> GenerateTrainingPlanAsync(string playerLevel, string focusArea);
     Task<string> EvaluatePerformanceAsync(string stats);
     Task<AISuggestionResponse> GetTacticalSuggestionAsync(AITacticalSuggestionRequest request);
+    Task<PassSimulationResponse> SimulatePassAsync(PassSimulationRequest request);
     Task<AIArticleResponse> GenerateArticleAsync(AIArticleRequest request);
 }
 
@@ -75,4 +76,28 @@ public class AIPlayerSuggestion
     public double MoveY { get; set; }
     public string Action { get; set; } = "";
     public string Reason { get; set; } = "";
+}
+
+public class PassSimulationRequest
+{
+    public string BallHolderId { get; set; } = "";
+    public int BallHolderNumber { get; set; }
+    public string BallHolderPosition { get; set; } = "";
+    public double BallHolderX { get; set; }
+    public double BallHolderY { get; set; }
+    public int TeamId { get; set; }
+    public List<AIPlayerInfo> AllPlayers { get; set; } = new();
+    public string? ScenarioContext { get; set; }
+}
+
+public class PassSimulationResponse
+{
+    public string TargetPlayerId { get; set; } = "";
+    public string TargetPlayerName { get; set; } = "";
+    public int TargetPlayerNumber { get; set; }
+    public double TargetX { get; set; }
+    public double TargetY { get; set; }
+    public string PassType { get; set; } = "";
+    public string Reason { get; set; } = "";
+    public string Trajectory { get; set; } = "straight";
 }

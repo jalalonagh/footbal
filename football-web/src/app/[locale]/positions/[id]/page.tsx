@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 
 interface Position {
   id: string;
@@ -57,12 +57,17 @@ export default function PositionDetailPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [positionData, myPositionData] = await Promise.all([
-        api.positions.get(id),
-        user ? api.positions.getMyPosition() : Promise.resolve(null)
-      ]);
+      const positionData = await api.positions.get(id);
       setPosition(positionData);
-      setMyPosition(myPositionData);
+      
+      if (user) {
+        try {
+          const myPositionData = await api.positions.getMyPosition();
+          setMyPosition(myPositionData);
+        } catch {
+          // Not logged in or no position selected - ignore
+        }
+      }
     } catch {
       router.push("/positions");
     } finally {

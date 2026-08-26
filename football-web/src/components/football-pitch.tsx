@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useCallback, useState, useEffect } from "react";
+import AnimatedPassBall from "./animated-pass-ball";
 
 export interface PlayerData {
   id: string;
@@ -66,6 +67,19 @@ interface FootballPitchProps {
   evaluations?: Record<string, EvaluationData>;
   aiSuggestions?: any[];
   showAISuggestions?: boolean;
+  passSimulation?: {
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number;
+    targetPlayerNumber: number;
+    targetPlayerName: string;
+    passType: string;
+    reason: string;
+    trajectory: string;
+  } | null;
+  onPassSimulationComplete?: () => void;
+  onPassSimulationDismiss?: () => void;
 }
 
 export type { EvaluationData };
@@ -77,6 +91,7 @@ export default function FootballPitch({
   onPlayerMove, onBallMove, onPlayerSelect, onDirectionSet, onBallDirectionSet, onBallClaimed, onPass,
   disabled = false, width = 800, height = 520,
   evaluations = {}, aiSuggestions = [], showAISuggestions = false,
+  passSimulation = null, onPassSimulationComplete, onPassSimulationDismiss,
 }: FootballPitchProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
@@ -343,6 +358,14 @@ export default function FootballPitch({
         <circle cx={toSvgX(ball.x)} cy={toSvgY(ball.y)} r="7" fill="white" stroke="#333" strokeWidth="1.5" />
         <circle cx={toSvgX(ball.x)} cy={toSvgY(ball.y)} r="2" fill="#333" />
       </g>
+
+      {passSimulation && onPassSimulationComplete && onPassSimulationDismiss && (
+        <AnimatedPassBall
+          simulation={passSimulation}
+          onComplete={onPassSimulationComplete}
+          onDismiss={onPassSimulationDismiss}
+        />
+      )}
     </svg>
   );
 }

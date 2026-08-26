@@ -79,6 +79,22 @@ public class AIController : ControllerBase
         return Ok(hasAccess);
     }
 
+    [HttpPost("simulate-pass")]
+    [Authorize]
+    public async Task<ActionResult<PassSimulationResponse>> SimulatePass([FromBody] PassSimulationRequest request)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var hasAccess = await _subscriptionService.HasFeatureAccessAsync(Guid.Parse(userId), "AI_Coach");
+        if (!hasAccess)
+            return Forbid();
+
+        var response = await _aiService.SimulatePassAsync(request);
+        return Ok(response);
+    }
+
     [HttpPost("generate-article")]
     [Authorize(Roles = "Coach,Admin,SuperAdmin")]
     public async Task<ActionResult<AIArticleResponse>> GenerateArticle([FromBody] AIArticleRequest request)

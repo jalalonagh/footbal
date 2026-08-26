@@ -246,6 +246,8 @@ export default function ScenarioDetailPage() {
               onPlayerSelect={setSelectedPlayerId}
               onDirectionSet={handleDirectionSet} onBallDirectionSet={handleBallDirectionSet}
               onBallClaimed={handleBallClaimed} onPass={handlePass}
+              aiSuggestions={aiSuggestions}
+              showAISuggestions={showAISuggestions}
             />
           )}
         </div>

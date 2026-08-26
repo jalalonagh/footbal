@@ -67,8 +67,8 @@ public class PositionController : ControllerBase
         var userId = GetUserId();
         if (userId == null) return Unauthorized();
 
-        var userPosition = await _positionService.GetUserPositionAsync(userId.Value);
-        return Ok(userPosition);
+        var myPosition = await _positionService.GetMyPositionAsync(userId.Value);
+        return Ok(myPosition);
     }
 
     [Authorize]

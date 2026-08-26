@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { api } from "@/lib/api";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 
 interface Position {
   id: string;
@@ -17,8 +17,8 @@ interface Position {
   requirements?: string;
   requirementsFa?: string;
   iconUrl?: string;
-  displayOrder: number;
-  isActive: boolean;
+  displayOrder?: number;
+  isActive?: boolean;
   category?: string;
 }
 
@@ -26,8 +26,8 @@ interface UserPosition {
   id: string;
   userId: string;
   positionId: string;
-  position: Position;
   selectedAt: string;
+  position: Position;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {

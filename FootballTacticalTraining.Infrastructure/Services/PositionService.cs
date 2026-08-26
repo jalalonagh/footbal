@@ -62,6 +62,36 @@ public class PositionService : IPositionService
             .FirstOrDefaultAsync(up => up.UserId == userId && up.IsActive);
     }
 
+    public async Task<MyPositionResponse?> GetMyPositionAsync(Guid userId)
+    {
+        var userPosition = await _context.UserPositions
+            .Include(up => up.Position)
+            .FirstOrDefaultAsync(up => up.UserId == userId && up.IsActive);
+
+        if (userPosition == null) return null;
+
+        return new MyPositionResponse
+        {
+            Id = userPosition.Id,
+            UserId = userPosition.UserId,
+            PositionId = userPosition.PositionId,
+            SelectedAt = userPosition.SelectedAt,
+            Position = new PositionDto
+            {
+                Id = userPosition.Position.Id,
+                Code = userPosition.Position.Code,
+                Name = userPosition.Position.Name,
+                NameFa = userPosition.Position.NameFa,
+                Description = userPosition.Position.Description,
+                DescriptionFa = userPosition.Position.DescriptionFa,
+                Requirements = userPosition.Position.Requirements,
+                RequirementsFa = userPosition.Position.RequirementsFa,
+                IconUrl = userPosition.Position.IconUrl,
+                Category = userPosition.Position.Category
+            }
+        };
+    }
+
     public async Task<UserPosition> SelectPositionAsync(Guid userId, Guid positionId)
     {
         var existing = await _context.UserPositions

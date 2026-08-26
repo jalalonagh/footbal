@@ -15,4 +15,5 @@ public class Position : BaseEntity
     public string? Category { get; set; }
 
     public ICollection<UserPosition> UserPositions { get; set; } = new List<UserPosition>();
+    public ICollection<PositionVideo> Videos { get; set; } = new List<PositionVideo>();
 }

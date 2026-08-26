@@ -50,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<ITicketService, TicketService>();
         services.AddScoped<IPositionService, PositionService>();
+        services.AddScoped<IPositionVideoService, PositionVideoService>();
 
         services.AddHttpClient<IAIService, AIService>();
         services.Configure<AISettings>(configuration.GetSection("AI"));
