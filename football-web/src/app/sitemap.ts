@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { locales } from "@/i18n/routing";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://footballtactics.com";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://footiq.ir";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages = ["", "/scenarios", "/pricing", "/articles", "/faq"];

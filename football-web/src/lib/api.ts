@@ -1,6 +1,6 @@
 import type { AuthResponse, User, Scenario, ScenarioPlayer, ScenarioSolution, ScenarioRule, TrainingSession, TrainingDecision, TrainingPlan, TrainingPlanItem, PlayerProfile, PlayerProgress, PlayerAchievement, Team, Academy, SubscriptionPlan, Subscription, Article, AIArticleResponse, Faq, Discount, Coupon, PlayerStats, CoachStats, AdminStats, PagedResult, GameState, ImageAnalysisResponse } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://localhost:7223/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.footiq.ir/api";
 
 async function request<T>(endpoint: string, options?: RequestInit, isRetry = false): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
