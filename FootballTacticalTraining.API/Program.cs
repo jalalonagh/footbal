@@ -106,7 +106,10 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    //await db.Database.MigrateAsync();
+    if (app.Environment.IsProduction())
+    {
+        await db.Database.MigrateAsync();
+    }
     await FootballTacticalTraining.Infrastructure.Data.SeedData.SeedAsync(db);
     await FootballTacticalTraining.Infrastructure.Data.PositionSeeder.SeedPositionsAsync(db);
 }

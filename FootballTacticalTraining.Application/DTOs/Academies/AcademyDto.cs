@@ -8,7 +8,7 @@ public class CreateAcademyDto
     [StringLength(200, MinimumLength = 2)]
     public string Name { get; set; } = string.Empty;
 
-    [StringLength(1000)]
+    [StringLength(2000)]
     public string? Description { get; set; }
 
     [StringLength(500)]
@@ -27,7 +27,34 @@ public class CreateAcademyDto
     public string? City { get; set; }
 
     [StringLength(100)]
+    public string? Province { get; set; }
+
+    [StringLength(100)]
     public string? Country { get; set; }
+
+    [StringLength(300)]
+    public string? Website { get; set; }
+
+    [StringLength(200)]
+    public string? Instagram { get; set; }
+
+    [StringLength(200)]
+    public string? Telegram { get; set; }
+
+    public int? FoundedYear { get; set; }
+
+    [StringLength(500)]
+    public string? AgeGroups { get; set; }
+
+    [StringLength(500)]
+    public string? PlayingStyle { get; set; }
+
+    [StringLength(1000)]
+    public string? Facilities { get; set; }
+
+    public int? MinAge { get; set; }
+    public int? MaxAge { get; set; }
+    public decimal? MonthlyFee { get; set; }
 }
 
 public class UpdateAcademyDto
@@ -36,7 +63,7 @@ public class UpdateAcademyDto
     [StringLength(200, MinimumLength = 2)]
     public string Name { get; set; } = string.Empty;
 
-    [StringLength(1000)]
+    [StringLength(2000)]
     public string? Description { get; set; }
 
     [StringLength(500)]
@@ -55,5 +82,34 @@ public class UpdateAcademyDto
     public string? City { get; set; }
 
     [StringLength(100)]
+    public string? Province { get; set; }
+
+    [StringLength(100)]
     public string? Country { get; set; }
+
+    [StringLength(300)]
+    public string? Website { get; set; }
+
+    [StringLength(200)]
+    public string? Instagram { get; set; }
+
+    [StringLength(200)]
+    public string? Telegram { get; set; }
+
+    public int? FoundedYear { get; set; }
+
+    [StringLength(500)]
+    public string? AgeGroups { get; set; }
+
+    [StringLength(500)]
+    public string? PlayingStyle { get; set; }
+
+    [StringLength(1000)]
+    public string? Facilities { get; set; }
+
+    public int? MinAge { get; set; }
+    public int? MaxAge { get; set; }
+    public decimal? MonthlyFee { get; set; }
+    public bool? IsActive { get; set; }
+    public string? AdminNotes { get; set; }
 }

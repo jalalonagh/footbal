@@ -103,6 +103,22 @@ public class AIController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("extract-scenario")]
+    [Authorize]
+    public async Task<ActionResult<ImageAnalysisResponse>> ExtractScenario([FromBody] ImageAnalysisRequest request)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var hasAccess = await _subscriptionService.HasFeatureAccessAsync(Guid.Parse(userId), "AI_Coach");
+        if (!hasAccess)
+            return Forbid();
+
+        var response = await _aiService.AnalyzeFootballImageAsync(request);
+        return Ok(response);
+    }
+
     private string? GetUserId()
     {
         var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;

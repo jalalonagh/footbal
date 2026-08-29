@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - ./football-web/.next/static:/usr/share/nginx/html/_next/static:ro
+    depends_on:
+      - api
+      - web
+
+  api:
+    build:
+      context: .
+      dockerfile: FootballTacticalTraining.API/Dockerfile
+    expose:
+      - "8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING}
+      - ConnectionStrings__Redis=${REDIS_CONNECTION_STRING}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=footiq
+      - Jwt__Audience=footiq-web
+      - Jwt__ExpiryHours=168
+      - Cors__Origins=https://footiq.ir,https://www.footiq.ir,http://localhost:3000
+      - ZarinPal__MerchantId=${ZARINPAL_MERCHANT_ID}
+      - ZarinPal__IsSandbox=false
+      - AI__BaseUrl=${AI_BASE_URL}
+      - AI__ApiKey=${AI_API_KEY}
+      - AI__Model=DeepSeek-V4-Flash
+
+  web:
+    build:
+      context: ./football-web
+      dockerfile: Dockerfile
+    expose:
+      - "3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.footiq.ir/api
+      - NEXT_PUBLIC_SITE_URL=https://footiq.ir

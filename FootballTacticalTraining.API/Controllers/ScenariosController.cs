@@ -17,15 +17,18 @@ public class ScenariosController : ControllerBase
     private readonly IScenarioSolutionService _scenarioSolutionService;
     private readonly IScenarioRuleService _scenarioRuleService;
     private readonly IAuditService _auditService;
+    private readonly ISubscriptionService _subscriptionService;
 
     public ScenariosController(IScenarioService scenarioService, IScenarioPlayerService scenarioPlayerService,
-        IScenarioSolutionService scenarioSolutionService, IScenarioRuleService scenarioRuleService, IAuditService auditService)
+        IScenarioSolutionService scenarioSolutionService, IScenarioRuleService scenarioRuleService, IAuditService auditService,
+        ISubscriptionService subscriptionService)
     {
         _scenarioService = scenarioService;
         _scenarioPlayerService = scenarioPlayerService;
         _scenarioSolutionService = scenarioSolutionService;
         _scenarioRuleService = scenarioRuleService;
         _auditService = auditService;
+        _subscriptionService = subscriptionService;
     }
 
     [HttpGet]
@@ -177,11 +180,163 @@ public class ScenariosController : ControllerBase
     }
 
     [Authorize(Roles = "Admin,SuperAdmin")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid id)
+    [HttpDelete("rules/{ruleId}")]
+    public async Task<IActionResult> DeleteRule(Guid ruleId)
     {
-        await _scenarioService.DeleteAsync(id);
+        await _scenarioRuleService.DeleteAsync(ruleId);
         return NoContent();
+    }
+
+    // --- Admin: Manage all scenarios ---
+
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [HttpGet("admin/all")]
+    public async Task<IActionResult> GetAllForAdmin(
+        [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        var scenarios = await _scenarioService.GetAllForAdminAsync(status, search, page, pageSize);
+        var total = await _scenarioService.GetAdminCountAsync(status, search);
+
+        var result = new List<object>();
+        foreach (var s in scenarios)
+        {
+            var players = await _scenarioPlayerService.GetByScenarioAsync(s.Id);
+            result.Add(new
+            {
+                s.Id, s.Name, s.Description,
+                Category = s.Category.ToString(),
+                Difficulty = s.Difficulty.ToString(),
+                s.Formation,
+                GamePhase = s.GamePhase.ToString(),
+                s.GameMinute,
+                s.HomeScore,
+                s.AwayScore,
+                Status = s.Status.ToString(),
+                TrainingMode = s.TrainingMode.ToString(),
+                s.ImageUrl,
+                s.CreatedByCoachId,
+                s.CreatedAt,
+                s.UpdatedAt,
+                PlayerCount = players.Count
+            });
+        }
+        return Ok(new { scenarios = result, total, page, pageSize });
+    }
+
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [HttpPost("admin/{id}/approve")]
+    public async Task<IActionResult> Approve(Guid id)
+    {
+        var scenario = await _scenarioService.GetByIdAsync(id);
+        if (scenario == null) return NotFound();
+        scenario.Status = ScenarioState.Published;
+        scenario.IsPublic = true;
+        await _scenarioService.UpdateAsync(scenario);
+        await _auditService.LogAsync("ApproveScenario", "Scenario", id.ToString(), scenario.Status.ToString(), "Published", HttpContext);
+        return Ok(MapToDto(scenario));
+    }
+
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    [HttpPost("admin/{id}/reject")]
+    public async Task<IActionResult> Reject(Guid id)
+    {
+        var scenario = await _scenarioService.GetByIdAsync(id);
+        if (scenario == null) return NotFound();
+        scenario.Status = ScenarioState.Archived;
+        scenario.IsPublic = false;
+        await _scenarioService.UpdateAsync(scenario);
+        await _auditService.LogAsync("RejectScenario", "Scenario", id.ToString(), scenario.Status.ToString(), "Archived", HttpContext);
+        return Ok(MapToDto(scenario));
+    }
+
+    // --- User: Create scenario from image ---
+
+    [Authorize]
+    [HttpPost("from-image")]
+    public async Task<IActionResult> CreateFromImage([FromBody] CreateFromImageDto dto)
+    {
+        var userId = GetUserId();
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var hasAccess = await _subscriptionService.HasFeatureAccessAsync(Guid.Parse(userId), "AI_Coach");
+        if (!hasAccess) return Forbid();
+
+        if (string.IsNullOrEmpty(dto.Category) || !Enum.TryParse<ScenarioCategory>(dto.Category, true, out var cat)) cat = ScenarioCategory.Team;
+        if (string.IsNullOrEmpty(dto.Difficulty) || !Enum.TryParse<DifficultyLevel>(dto.Difficulty, true, out var diff)) diff = DifficultyLevel.Intermediate;
+        if (string.IsNullOrEmpty(dto.GamePhase) || !Enum.TryParse<GamePhase>(dto.GamePhase, true, out var gp)) gp = GamePhase.BuildUp;
+        if (string.IsNullOrEmpty(dto.TrainingMode) || !Enum.TryParse<TrainingMode>(dto.TrainingMode, true, out var tm)) tm = TrainingMode.Learn;
+
+        var scenario = new Scenario
+        {
+            Name = dto.Name,
+            Description = dto.Description,
+            Category = cat,
+            Difficulty = diff,
+            Formation = dto.Formation,
+            GamePhase = gp,
+            GameMinute = dto.GameMinute,
+            HomeScore = dto.HomeScore,
+            AwayScore = dto.AwayScore,
+            TrainingMode = tm,
+            Status = ScenarioState.Draft,
+            IsPublic = false,
+            ImageUrl = dto.ImageUrl,
+            CreatedByCoachId = Guid.Parse(userId)
+        };
+
+        await _scenarioService.CreateAsync(scenario);
+
+        // Save source image to disk if provided
+        if (!string.IsNullOrEmpty(dto.SourceImageBase64))
+        {
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "scenario-images");
+            Directory.CreateDirectory(uploadsDir);
+            var fileName = $"{scenario.Id}.jpg";
+            var filePath = Path.Combine(uploadsDir, fileName);
+            try
+            {
+                var imageBytes = Convert.FromBase64String(dto.SourceImageBase64);
+                await System.IO.File.WriteAllBytesAsync(filePath, imageBytes);
+                scenario.ImageUrl = $"/uploads/scenario-images/{fileName}";
+                await _scenarioService.UpdateAsync(scenario);
+            }
+            catch { }
+        }
+
+        // Save AI-detected players
+        if (dto.Players != null && dto.Players.Count > 0)
+        {
+            var players = dto.Players.Select(p =>
+            {
+                if (!Enum.TryParse<FootballPosition>(p.Position, true, out var pos)) pos = FootballPosition.CM;
+                return new ScenarioPlayer
+                {
+                    ScenarioId = scenario.Id,
+                    Number = p.Number,
+                    Position = pos,
+                    StartX = (decimal)p.X,
+                    StartY = (decimal)p.Y,
+                    TeamId = p.TeamId,
+                    HasBall = p.HasBall,
+                    Role = p.Description
+                };
+            }).ToList();
+
+            await _scenarioPlayerService.BulkCreateAsync(scenario.Id, players);
+        }
+
+        await _auditService.LogAsync("CreateFromImage", "Scenario", scenario.Id.ToString(), null, scenario.Name, HttpContext);
+        return CreatedAtAction(nameof(GetById), new { id = scenario.Id }, MapToDto(scenario));
+    }
+
+    private string? GetUserId()
+    {
+        var sub = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+        if (!string.IsNullOrEmpty(sub)) return sub;
+        return User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     }
 
     [Authorize(Roles = "Coach,Admin,SuperAdmin")]
@@ -382,14 +537,6 @@ public class ScenariosController : ControllerBase
         return Ok(await _scenarioRuleService.UpdateAsync(existing));
     }
 
-    [Authorize(Roles = "Coach,Admin,SuperAdmin")]
-    [HttpDelete("rules/{ruleId}")]
-    public async Task<IActionResult> DeleteRule(Guid ruleId)
-    {
-        await _scenarioRuleService.DeleteAsync(ruleId);
-        return NoContent();
-    }
-
     private static ScenarioDto MapToDto(Scenario s) => new()
     {
         Id = s.Id,
@@ -407,4 +554,32 @@ public class ScenariosController : ControllerBase
         PlayerCount = s.Players?.Count ?? 0,
         IsPublic = s.IsPublic
     };
+}
+
+public class CreateFromImageDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public string? Difficulty { get; set; }
+    public string? Formation { get; set; }
+    public string? GamePhase { get; set; }
+    public int GameMinute { get; set; }
+    public int HomeScore { get; set; }
+    public int AwayScore { get; set; }
+    public string? TrainingMode { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? SourceImageBase64 { get; set; }
+    public List<ImagePlayerDto>? Players { get; set; }
+}
+
+public class ImagePlayerDto
+{
+    public int Number { get; set; }
+    public string Position { get; set; } = "";
+    public double X { get; set; }
+    public double Y { get; set; }
+    public int TeamId { get; set; }
+    public bool HasBall { get; set; }
+    public string Description { get; set; } = "";
 }

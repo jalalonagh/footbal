@@ -58,6 +58,7 @@ public class AppDbContext : DbContext
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
     public DbSet<UserPosition> UserPositions => Set<UserPosition>();
     public DbSet<PositionVideo> PositionVideos => Set<PositionVideo>();
+    public DbSet<AiLog> AiLogs => Set<AiLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

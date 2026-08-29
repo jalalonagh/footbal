@@ -14,4 +14,6 @@ public interface IScenarioService
     Task UpdateAsync(Scenario scenario);
     Task DeleteAsync(Guid id);
     Task<int> GetTotalCountAsync();
+    Task<List<Scenario>> GetAllForAdminAsync(string? status, string? search, int page, int pageSize);
+    Task<int> GetAdminCountAsync(string? status, string? search);
 }

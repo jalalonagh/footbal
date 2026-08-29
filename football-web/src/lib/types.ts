@@ -170,8 +170,29 @@ export interface Academy {
   id: string;
   name: string;
   description: string;
-  ownerId: string;
-  teamCount: number;
+  logoUrl: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  city: string;
+  province: string;
+  country: string;
+  website: string;
+  instagram: string;
+  telegram: string;
+  foundedYear: number;
+  ageGroups: string;
+  playingStyle: string;
+  facilities: string;
+  minAge: number;
+  maxAge: number;
+  monthlyFee: number;
+  isActive: boolean;
+  status: string;
+  adminNotes: string;
+  rejectionReason: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 // ─── Subscription ──────────────────────────────────────
@@ -243,6 +264,29 @@ export interface AIArticleResponse {
   excerpt: string;
   readingTimeMinutes: number;
   schemaJson: string;
+}
+
+export interface ImageAnalysisResponse {
+  scenarioName: string;
+  description: string;
+  category: string;
+  difficulty: string;
+  gamePhase: string;
+  gameMinute: number;
+  homeScore: number;
+  awayScore: number;
+  formation: string;
+  trainingMode: string;
+  players: Array<{
+    number: number;
+    position: string;
+    x: number;
+    y: number;
+    teamId: number;
+    hasBall: boolean;
+    description: string;
+  }>;
+  explanation: string;
 }
 
 export interface Faq {

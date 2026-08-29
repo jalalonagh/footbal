@@ -9,6 +9,40 @@ public interface IAIService
     Task<AISuggestionResponse> GetTacticalSuggestionAsync(AITacticalSuggestionRequest request);
     Task<PassSimulationResponse> SimulatePassAsync(PassSimulationRequest request);
     Task<AIArticleResponse> GenerateArticleAsync(AIArticleRequest request);
+    Task<ImageAnalysisResponse> AnalyzeFootballImageAsync(ImageAnalysisRequest request);
+}
+
+public class ImageAnalysisRequest
+{
+    public string ImageBase64 { get; set; } = string.Empty;
+    public string Language { get; set; } = "English";
+}
+
+public class ImageAnalysisResponse
+{
+    public string ScenarioName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Category { get; set; } = "Team";
+    public string Difficulty { get; set; } = "Intermediate";
+    public string GamePhase { get; set; } = "BuildUp";
+    public int GameMinute { get; set; }
+    public int HomeScore { get; set; }
+    public int AwayScore { get; set; }
+    public string Formation { get; set; } = "";
+    public string TrainingMode { get; set; } = "Tactical";
+    public List<ImagePlayerInfo> Players { get; set; } = new();
+    public string Explanation { get; set; } = "";
+}
+
+public class ImagePlayerInfo
+{
+    public int Number { get; set; }
+    public string Position { get; set; } = "";
+    public double X { get; set; }
+    public double Y { get; set; }
+    public int TeamId { get; set; }
+    public bool HasBall { get; set; }
+    public string Description { get; set; } = "";
 }
 
 public class AIArticleRequest

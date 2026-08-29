@@ -19,6 +19,8 @@ public class Scenario : BaseEntity
     public TrainingMode TrainingMode { get; set; } = TrainingMode.Practice;
     public bool IsPublic { get; set; }
     public Guid? CreatedByCoachId { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? SourceImageBase64 { get; set; }
     
     public ICollection<ScenarioPlayer> Players { get; set; } = new List<ScenarioPlayer>();
     public ICollection<ScenarioSolution> Solutions { get; set; } = new List<ScenarioSolution>();

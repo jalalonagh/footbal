@@ -1,4 +1,4 @@
-import type { AuthResponse, User, Scenario, ScenarioPlayer, ScenarioSolution, ScenarioRule, TrainingSession, TrainingDecision, TrainingPlan, TrainingPlanItem, PlayerProfile, PlayerProgress, PlayerAchievement, Team, Academy, SubscriptionPlan, Subscription, Article, AIArticleResponse, Faq, Discount, Coupon, PlayerStats, CoachStats, AdminStats, PagedResult, GameState } from "./types";
+import type { AuthResponse, User, Scenario, ScenarioPlayer, ScenarioSolution, ScenarioRule, TrainingSession, TrainingDecision, TrainingPlan, TrainingPlanItem, PlayerProfile, PlayerProgress, PlayerAchievement, Team, Academy, SubscriptionPlan, Subscription, Article, AIArticleResponse, Faq, Discount, Coupon, PlayerStats, CoachStats, AdminStats, PagedResult, GameState, ImageAnalysisResponse } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://localhost:7223/api";
 
@@ -168,10 +168,29 @@ export const api = {
   // ─── Academies ───────────────────────────────────────
   academies: {
     get: (id: string) => request<Academy>(`/academy/${id}`),
-    list: () => request<Academy[]>("/academy"),
+    list: (params?: { page?: number; pageSize?: number; search?: string; city?: string; province?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.page) qs.set("page", String(params.page));
+      if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+      if (params?.search) qs.set("search", params.search);
+      if (params?.city) qs.set("city", params.city);
+      if (params?.province) qs.set("province", params.province);
+      return request<{ academies: Academy[]; total: number; page: number; pageSize: number }>(`/academy?${qs.toString()}`);
+    },
     create: (data: Partial<Academy>) => request<Academy>("/academy", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Academy>) => request<Academy>(`/academy/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/academy/${id}`, { method: "DELETE" }),
+    my: () => request<Academy[]>("/academy/my"),
+    adminList: (params: { status?: string; search?: string; page?: number; pageSize?: number }) => {
+      const qs = new URLSearchParams();
+      if (params.status) qs.set("status", params.status);
+      if (params.search) qs.set("search", params.search);
+      if (params.page) qs.set("page", String(params.page));
+      if (params.pageSize) qs.set("pageSize", String(params.pageSize));
+      return request<{ academies: Academy[]; total: number; page: number; pageSize: number }>(`/academy/admin/all?${qs.toString()}`);
+    },
+    approve: (id: string, notes?: string) => request<Academy>(`/academy/admin/${id}/approve`, { method: "POST", body: JSON.stringify({ notes }) }),
+    reject: (id: string, notes?: string) => request<Academy>(`/academy/admin/${id}/reject`, { method: "POST", body: JSON.stringify({ notes }) }),
   },
 
   // ─── Subscription ────────────────────────────────────
@@ -294,6 +313,22 @@ export const api = {
     updateCoupon: (id: string, data: Partial<Coupon>) => request<Coupon>(`/Discount/coupons/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteCoupon: (id: string) => request<void>(`/Discount/coupons/${id}`, { method: "DELETE" }),
     validateCoupon: (code: string, planId: string) => request<{ valid: boolean; discount: number }>("/Discount/coupons/validate", { method: "POST", body: JSON.stringify({ code, planId }) }),
+  },
+
+  // ─── AI Logs ─────────────────────────────────────────
+  aiLogs: {
+    list: (params: { page?: number; pageSize?: number; search?: string; endpoint?: string; userId?: string; from?: string; to?: string }) => {
+      const qs = new URLSearchParams();
+      if (params.page) qs.set("page", String(params.page));
+      if (params.pageSize) qs.set("pageSize", String(params.pageSize));
+      if (params.search) qs.set("search", params.search);
+      if (params.endpoint) qs.set("endpoint", params.endpoint);
+      if (params.userId) qs.set("userId", params.userId);
+      if (params.from) qs.set("from", params.from);
+      if (params.to) qs.set("to", params.to);
+      return request<{ logs: any[]; total: number; page: number; pageSize: number }>(`/AiLogs?${qs.toString()}`);
+    },
+    get: (id: string) => request<any>(`/AiLogs/${id}`),
   },
 
   // ─── Statistics ──────────────────────────────────────
@@ -423,5 +458,27 @@ export const api = {
     }>("/ai/simulate-pass", { method: "POST", body: JSON.stringify(data) }),
     generateArticle: (data: { title: string; summary?: string; focusKeyword?: string; language?: string; wordCount?: number }) =>
       request<AIArticleResponse>("/AI/generate-article", { method: "POST", body: JSON.stringify(data) }),
+    extractScenario: (data: { imageBase64: string; language?: string }) =>
+      request<ImageAnalysisResponse>("/ai/extract-scenario", { method: "POST", body: JSON.stringify(data) }),
+  },
+
+  // ─── Scenarios (Image) ─────────────────────────────
+  scenarioImage: {
+    create: (data: {
+      name: string; description: string; category?: string; difficulty?: string; formation?: string;
+      gamePhase?: string; gameMinute?: number; homeScore?: number; awayScore?: number; trainingMode?: string;
+      imageUrl?: string; sourceImageBase64?: string;
+      players?: Array<{ number: number; position: string; x: number; y: number; teamId: number; hasBall: boolean; description: string }>;
+    }) => request<any>("/Scenarios/from-image", { method: "POST", body: JSON.stringify(data) }),
+    adminList: (params: { status?: string; search?: string; page?: number; pageSize?: number }) => {
+      const qs = new URLSearchParams();
+      if (params.status) qs.set("status", params.status);
+      if (params.search) qs.set("search", params.search);
+      if (params.page) qs.set("page", String(params.page));
+      if (params.pageSize) qs.set("pageSize", String(params.pageSize));
+      return request<{ scenarios: any[]; total: number; page: number; pageSize: number }>(`/Scenarios/admin/all?${qs.toString()}`);
+    },
+    approve: (id: string) => request<any>(`/Scenarios/admin/${id}/approve`, { method: "POST" }),
+    reject: (id: string) => request<any>(`/Scenarios/admin/${id}/reject`, { method: "POST" }),
   },
 };

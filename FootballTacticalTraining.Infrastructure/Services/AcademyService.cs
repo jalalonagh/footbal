@@ -1,5 +1,7 @@
 using FootballTacticalTraining.Application.Interfaces;
 using FootballTacticalTraining.Domain.Entities;
+using FootballTacticalTraining.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace FootballTacticalTraining.Infrastructure.Services;
 
@@ -17,10 +19,76 @@ public class AcademyService : IAcademyService
         return await _unitOfWork.Repository<Academy>().GetByIdAsync(id);
     }
 
-    public async Task<List<Academy>> GetAllAsync(int page = 1, int pageSize = 20)
+    public async Task<List<Academy>> GetApprovedAcademiesAsync(int page = 1, int pageSize = 20, string? search = null, string? city = null, string? province = null)
     {
-        var all = await _unitOfWork.Repository<Academy>().FindAsync(a => !a.IsDeleted);
-        return all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        var db = _unitOfWork.Repository<Academy>().GetDbContext();
+        var query = db.Set<Academy>()
+            .Where(a => !a.IsDeleted && a.Status == AcademyStatus.Approved && a.IsActive)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a => a.Name.Contains(search) || (a.Description != null && a.Description.Contains(search)) || (a.City != null && a.City.Contains(search)));
+
+        if (!string.IsNullOrWhiteSpace(city))
+            query = query.Where(a => a.City == city);
+
+        if (!string.IsNullOrWhiteSpace(province))
+            query = query.Where(a => a.Province == province);
+
+        return await query.OrderByDescending(a => a.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetApprovedCountAsync(string? search = null, string? city = null, string? province = null)
+    {
+        var db = _unitOfWork.Repository<Academy>().GetDbContext();
+        var query = db.Set<Academy>()
+            .Where(a => !a.IsDeleted && a.Status == AcademyStatus.Approved && a.IsActive)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a => a.Name.Contains(search) || (a.Description != null && a.Description.Contains(search)) || (a.City != null && a.City.Contains(search)));
+
+        if (!string.IsNullOrWhiteSpace(city))
+            query = query.Where(a => a.City == city);
+
+        if (!string.IsNullOrWhiteSpace(province))
+            query = query.Where(a => a.Province == province);
+
+        return await query.CountAsync();
+    }
+
+    public async Task<List<Academy>> GetAllForAdminAsync(string? status, string? search, int page, int pageSize)
+    {
+        var db = _unitOfWork.Repository<Academy>().GetDbContext();
+        var query = db.Set<Academy>().Where(a => !a.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<AcademyStatus>(status, true, out var state))
+            query = query.Where(a => a.Status == state);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a => a.Name.Contains(search) || (a.City != null && a.City.Contains(search)));
+
+        return await query.OrderByDescending(a => a.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetAdminCountAsync(string? status, string? search)
+    {
+        var db = _unitOfWork.Repository<Academy>().GetDbContext();
+        var query = db.Set<Academy>().Where(a => !a.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<AcademyStatus>(status, true, out var state))
+            query = query.Where(a => a.Status == state);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(a => a.Name.Contains(search) || (a.City != null && a.City.Contains(search)));
+
+        return await query.CountAsync();
     }
 
     public async Task<Academy> CreateAsync(Academy academy)
@@ -78,4 +146,3 @@ public class AcademyService : IAcademyService
         }
     }
 }
-

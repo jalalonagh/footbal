@@ -17,6 +17,9 @@ const links = [
   { href: "/admin/contact", label: "Contact Settings", icon: "📞" },
   { href: "/tickets", label: "Tickets", icon: "🎫" },
   { href: "/admin/payment", label: "Payment Settings", icon: "💳", superAdminOnly: true },
+  { href: "/admin/ai-logs", label: "AI Logs", icon: "🤖", superAdminOnly: true },
+  { href: "/admin/scenario-approval", label: "Scenario Approval", icon: "📋" },
+  { href: "/admin/academy-approval", label: "Academy Approval", icon: "🏟️" },
 ];
 
 export default function AdminSidebar() {

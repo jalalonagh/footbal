@@ -77,4 +77,35 @@ public class ScenarioService : IScenarioService
     {
         return await _unitOfWork.Repository<Scenario>().CountAsync(s => s.Status == ScenarioState.Published);
     }
+
+    public async Task<List<Scenario>> GetAllForAdminAsync(string? status, string? search, int page, int pageSize)
+    {
+        var db = _unitOfWork.Repository<Scenario>().GetDbContext();
+        var query = db.Set<Scenario>().Where(s => !s.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ScenarioState>(status, true, out var state))
+            query = query.Where(s => s.Status == state);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(s => s.Name.Contains(search) || s.Description.Contains(search));
+
+        return await query.OrderByDescending(s => s.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetAdminCountAsync(string? status, string? search)
+    {
+        var db = _unitOfWork.Repository<Scenario>().GetDbContext();
+        var query = db.Set<Scenario>().Where(s => !s.IsDeleted).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<ScenarioState>(status, true, out var state))
+            query = query.Where(s => s.Status == state);
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(s => s.Name.Contains(search) || s.Description.Contains(search));
+
+        return await query.CountAsync();
+    }
 }

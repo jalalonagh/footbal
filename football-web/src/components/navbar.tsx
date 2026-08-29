@@ -25,6 +25,9 @@ export default function Navbar() {
           <Link href="/positions" className="text-gray-300 hover:text-white transition text-sm">
             {t("positions")}
           </Link>
+          <Link href="/academies" className="text-gray-300 hover:text-white transition text-sm">
+            {t("academies")}
+          </Link>
           {isAuthenticated && (
             <Link href="/dashboard" className="text-gray-300 hover:text-white transition text-sm">
               {t("dashboard")}

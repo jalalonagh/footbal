@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using FootballTacticalTraining.Application.Interfaces;
+using FootballTacticalTraining.Domain.Entities;
 using Microsoft.Extensions.Options;
 
 namespace FootballTacticalTraining.Infrastructure.Services;
@@ -9,35 +11,72 @@ public class AIService : IAIService
 {
     private readonly HttpClient _httpClient;
     private readonly AISettings _settings;
+    private readonly AiLogService? _logService;
 
-    public AIService(HttpClient httpClient, IOptions<AISettings> settings)
+    public AIService(HttpClient httpClient, IOptions<AISettings> settings, AiLogService? logService = null)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
+        _logService = logService;
     }
 
-    private async Task<string> SendRequestAsync(object request)
+    private async Task<string> SendRequestAsync(string endpoint, object request)
     {
         var json = JsonSerializer.Serialize(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}/chat/completions");
-        httpRequest.Content = content;
-        httpRequest.Headers.Add("Authorization", $"Bearer {_settings.ApiKey}");
+        var sw = Stopwatch.StartNew();
+        int statusCode = 0;
+        string responseBody = "";
+        string? error = null;
 
-        var response = await _httpClient.SendAsync(httpRequest);
-        response.EnsureSuccessStatusCode();
-
-        var responseJson = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(responseJson);
-        var root = doc.RootElement;
-        var choices = root.GetProperty("choices");
-        if (choices.GetArrayLength() > 0)
+        try
         {
-            var message = choices[0].GetProperty("message");
-            return message.GetProperty("content").GetString() ?? "";
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}/chat/completions");
+            httpRequest.Content = content;
+            httpRequest.Headers.Add("Authorization", $"Bearer {_settings.ApiKey}");
+
+            var response = await _httpClient.SendAsync(httpRequest);
+            statusCode = (int)response.StatusCode;
+            responseBody = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+
+            using var doc = JsonDocument.Parse(responseBody);
+            var root = doc.RootElement;
+            var choices = root.GetProperty("choices");
+            if (choices.GetArrayLength() > 0)
+            {
+                var message = choices[0].GetProperty("message");
+                return message.GetProperty("content").GetString() ?? "";
+            }
+            return "";
         }
-        return "";
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            if (_logService != null)
+            {
+                try
+                {
+                    await _logService.LogAsync(new AiLog
+                    {
+                        Endpoint = endpoint,
+                        RequestBody = json,
+                        ResponseBody = responseBody,
+                        StatusCode = statusCode,
+                        DurationMs = sw.ElapsedMilliseconds,
+                        ErrorMessage = error,
+                        Model = _settings.Model
+                    });
+                }
+                catch { }
+            }
+        }
     }
 
     public async Task<string> ChatAsync(string systemPrompt, string userMessage, decimal temperature = 0.7m, int maxTokens = 2048)
@@ -54,7 +93,7 @@ public class AIService : IAIService
             max_tokens = maxTokens
         };
 
-        return await SendRequestAsync(request);
+        return await SendRequestAsync("chat", request);
     }
 
     public async Task<string> AnalyzeTacticalAsync(string scenario, string players)
@@ -329,6 +368,156 @@ Generate the complete article with all SEO fields. Return ONLY the JSON object, 
             Keywords = request.FocusKeyword ?? "",
             Excerpt = request.Summary ?? "",
             ReadingTimeMinutes = request.WordCount / 200
+        };
+    }
+
+    public async Task<ImageAnalysisResponse> AnalyzeFootballImageAsync(ImageAnalysisRequest request)
+    {
+        var langInstruction = request.Language == "Persian" ? " Respond in Persian (Farsi)." : " Respond in English.";
+
+        var systemPrompt = $@"You are an expert football/soccer tactical analyst. Analyze the provided football match or training image and extract a tactical scenario from it.{langInstruction}
+
+You MUST return ONLY a valid JSON object with NO markdown, NO code fences, NO extra text. The JSON must have this EXACT structure:
+{{
+  ""scenarioName"": ""Brief descriptive name for this scenario (e.g., 'Counter-Attack through Left Wing')"",
+  ""description"": ""Detailed description of the tactical situation shown in the image"",
+  ""category"": ""One of: Striker, Winger, Midfielder, Defender, Team"",
+  ""difficulty"": ""One of: Beginner, Intermediate, Advanced, Expert"",
+  ""gamePhase"": ""One of: BuildUp, Possession, AttackingTransition, Attacking, FinalThird, DefensiveTransition, OutOfPossession, SetPiece"",
+  ""gameMinute"": estimated_minute_of_the_match_as_integer,
+  ""homeScore"": home_team_score_as_integer,
+  ""awayScore"": away_team_score_as_integer,
+  ""formation"": ""detected formation (e.g., '4-3-3', '4-4-2')"",
+  ""trainingMode"": ""One of: Learn, Practice, Challenge, Question"",
+  ""players"": [
+    {{
+      ""number"": player_number_as_integer,
+      ""position"": ""football position code (GK, CB, LB, RB, CDM, CM, CAM, LM, RM, LW, RWing, CF, ST)"",
+      ""x"": approximate_x_position_on_pitch_0_to_100,
+      ""y"": approximate_y_position_on_pitch_0_to_100,
+      ""teamId"": 1_for_home_team_or_2_for_away_team,
+      ""hasBall"": true_or_false,
+      ""description"": ""brief description of what this player is doing or about to do""
+    }}
+  ],
+  ""explanation"": ""Detailed tactical analysis of the situation, key movements, and coaching points""
+}}
+
+Analysis Guidelines:
+- Identify ALL visible players on the pitch (use standard football positions)
+- Estimate realistic X,Y coordinates on the pitch (0-100 scale where 0,0 is top-left)
+- Determine which team has possession
+- Identify the current game phase (attack, defense, transition, etc.)
+- Detect the formation being used
+- Describe key tactical movements and player positions
+- Include coaching insights about what could happen next
+- If you cannot clearly see a detail, make your best educated guess based on context
+- The pitch dimensions should follow standard football pitch proportions";
+
+        var userPrompt = $@"Analyze this football image and extract the tactical scenario. Provide all player positions, the current game situation, and tactical analysis.
+
+The image shows a football/soccer situation. Please identify:
+1. All visible players and their positions
+2. Which team has the ball
+3. The current game phase
+4. The formation being used
+5. What tactical action is likely to happen next
+
+Return ONLY the JSON object with the complete scenario data, nothing else.";
+
+        var requestBody = new
+        {
+            model = _settings.Model,
+            messages = new object[]
+            {
+                new { role = "system", content = systemPrompt },
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "text", text = userPrompt },
+                        new { type = "image_url", image_url = new { url = $"data:image/jpeg;base64,{request.ImageBase64}" } }
+                    }
+                }
+            },
+            temperature = 0.4m,
+            max_tokens = 4096
+        };
+
+        var sw = Stopwatch.StartNew();
+        int statusCode = 0;
+        string responseBody = "";
+        string? error = null;
+
+        try
+        {
+            var json = JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{_settings.BaseUrl}/chat/completions");
+            httpRequest.Content = content;
+            httpRequest.Headers.Add("Authorization", $"Bearer {_settings.ApiKey}");
+
+            var response = await _httpClient.SendAsync(httpRequest);
+            statusCode = (int)response.StatusCode;
+            responseBody = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+
+            using var doc = JsonDocument.Parse(responseBody);
+            var root = doc.RootElement;
+            var choices = root.GetProperty("choices");
+            if (choices.GetArrayLength() > 0)
+            {
+                var message = choices[0].GetProperty("message");
+                var contentStr = message.GetProperty("content").GetString() ?? "";
+
+                var cleaned = contentStr.Trim();
+                if (cleaned.StartsWith("```json")) cleaned = cleaned[7..];
+                if (cleaned.StartsWith("```")) cleaned = cleaned[3..];
+                if (cleaned.EndsWith("```")) cleaned = cleaned[..^3];
+                cleaned = cleaned.Trim();
+
+                var result = JsonSerializer.Deserialize<ImageAnalysisResponse>(cleaned, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (result != null && !string.IsNullOrEmpty(result.ScenarioName))
+                    return result;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            if (_logService != null)
+            {
+                try
+                {
+                    await _logService.LogAsync(new AiLog
+                    {
+                        Endpoint = "image-analysis",
+                        RequestBody = JsonSerializer.Serialize(requestBody),
+                        ResponseBody = responseBody,
+                        StatusCode = statusCode,
+                        DurationMs = sw.ElapsedMilliseconds,
+                        ErrorMessage = error,
+                        Model = _settings.Model
+                    });
+                }
+                catch { }
+            }
+        }
+
+        return new ImageAnalysisResponse
+        {
+            ScenarioName = "AI Extracted Scenario",
+            Description = "Scenario extracted from uploaded image",
+            Category = "Team",
+            Difficulty = "Intermediate",
+            GamePhase = "BuildUp",
+            Players = new List<ImagePlayerInfo>()
         };
     }
 }

@@ -79,13 +79,18 @@ export default function ScenariosPage() {
       </nav>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex flex-wrap gap-4 mb-8">
+        <div className="flex flex-wrap gap-4 mb-8 items-center">
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500">
             {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:ring-2 focus:ring-green-500">
             {difficulties.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
           </select>
+          {isAuthenticated && (
+            <Link href="/scenarios/from-image" className="ml-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-semibold">
+              📸 Create from Image
+            </Link>
+          )}
         </div>
 
         {loading ? (

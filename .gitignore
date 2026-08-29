@@ -88,6 +88,16 @@ out/
 # Docker
 docker-compose.override.yml
 
+# Nginx SSL certs
+nginx/certs/*.pem
+nginx/certs/*.key
+!nginx/certs/.gitkeep
+
+# Env files
+.env
+.env.production
+.env.production.local
+
 # SQL Server
 sqldata/
 
