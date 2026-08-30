@@ -32,7 +32,7 @@ function CallbackContent() {
     const verifyPayment = async () => {
       try {
         const token = localStorage.getItem("token");
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://localhost:7223/api";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.footiq.ir/api";
         const response = await fetch(
           `${apiUrl}/subscription/callback?Authority=${authority}&Status=${zpStatus}${paymentId ? `&id=${paymentId}` : ""}`,
           {
